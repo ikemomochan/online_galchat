@@ -1,5 +1,14 @@
 let gyarumindDetailHistory = [];
 let currentDetailIndex = 0;
+const ADVICE_MAP = {
+  "自己受容": "弱さも含めて、あなたはあなたでいいんだよ！",
+  "自己肯定感": "人と比べる必要ないよ！そのまんまの君で、もうめっちゃイケてるよ👍",
+  "感情の強度": "もっと素直に自分の気持ちさらけ出しちゃっていいよ！誰も見てないし！",
+  "言語クリエイティビティ": "もっとおもろい言い方に変えたらテンションアガるかも！",
+  "共感・他者リスペクト": "いやなことは“どうしてこうなったんだろう？”って一歩引いて考えてみると、肩の力がふっと抜けるよ",
+  "ポジティブ変換力": "今の気持ちはそのままでOK！できたら今日の“ちょいハッピー”考えてみてね！✨",
+};
+
 document.getElementById("gyarumind-average")   // 平均スコアの表示先
 document.getElementById("trend-message")       // 上昇/下降のメッセージ表示先
 document.addEventListener("DOMContentLoaded", () => {
@@ -129,11 +138,21 @@ function showTrendMessage(msg) {
         currentDetailIndex = gyarumindDetailHistory.length - 1; // 最新を表示
         updateDetailView();
       }
+      //最低点のものへアドバイス
+      if (Array.isArray(data.lowest_items) && data.lowest_items.length) {
+  data.lowest_items.forEach(item => {
+    // ADVICE_MAP に存在する場合のみ表示
+    if (ADVICE_MAP[item]) {
+      addBubble(`📢 ${ADVICE_MAP[item]}`, "advice");
+    }
+  });
+}
+
 
     } catch (err) {
       console.error("通信エラー詳細:", err); // ← 追加
       loadingBubble.remove();
-      addBubble("通信エラーだよ💦", "gal");
+      addBubble("通信エラーだよ💦", "advice");
     } finally {
       setThinking(false);
     }
@@ -190,14 +209,21 @@ function updateDetailView() {
   }
 
   const detail = gyarumindDetailHistory[currentDetailIndex];
+  const excludedKeys = ["レジリエンス", "自他境界"];
+
   if (!detail || typeof detail !== "object") return;
 
   indexLabel.textContent = `#${(currentDetailIndex + 1) * 5}`;
 
+   // マイナス係数の項目（非表示対象）
+  //const excludedKeys = ["レジリエンス", "自他境界"];
+
   table.innerHTML = "";
-  for (const [key, value] of Object.entries(detail)) {
-    const row = document.createElement("tr");
-    row.innerHTML = `<td>${key}</td><td>${value}</td>`;
-    table.appendChild(row);
+  for (const [rawKey, value] of Object.entries(detail)) {
+  const key = rawKey.trim(); 
+  if (excludedKeys.includes(key)) continue;          // ← この行で負寄与項目をスキップ
+  const row = document.createElement("tr");
+  row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+  table.appendChild(row);
   }
 }

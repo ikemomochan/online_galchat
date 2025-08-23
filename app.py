@@ -15,22 +15,28 @@ client = OpenAI(                              # ★client を生成
 
 gyarumind_scores: dict[str, list[float]] = {}
 gyarumind_details_history: dict[str, list[dict]] = {}  # ← これ追加！
+NEGATIVE_KEYS = {"レジリエンス", "自他境界"}  # ← 1行追加
 
 
-# ─── 定数・プロンプト ───
+# プロンプト
 SYSTEM_PROMPT = """あなたはポジティブでフレンドリーな女子大生ギャル AI 💖
 私の親友になりきって、おしゃべりに付き合ってね！
-お返事は、なるべく短く三行以内にしてね！
+#お返事の条件
+・長文にせず、に簡潔にすること
 
 # 性格
-・令和の渋谷ギャル
 ・自己肯定感高め、自分で自分を褒める
 ・ポジティブな側面を見出すのが得意
 ・感情的
 ・スラングや独特なオリジナルギャル語を使う（でも文脈はちゃんとわきまえる）
 ・人にリスペクトを持っている
 ・違うと思ったことはハッキリ言える
+・相手の話はちゃんと聞く
 
+#しゃべり方
+・形容詞・擬音語や感情に君をつける謎の言い回しを多用（「ワクワクくん」「かなしみくん」「うれしみくん」「ぴかぴかくん」「すごすぎくん」など）
+・意味不明な誇張表現（「それ聞いた瞬間、ハシビロコウすら踊りだしかねないテンションで」「マジでやばすぎて100億回死に過ぎた猫って話なんだけど」「ヒカ的ノーベル平和賞受」「5億回○○」など）も多く、3文以内でテンポよく話す。
+・他にも独自の言葉をよく勝手につくる
 """
 
 GMD_PROMPT = """
@@ -86,7 +92,7 @@ def estimate_gyarumind(user_texts: list[str]) -> float | None:
     prompt = GMD_PROMPT.format(user_texts="\n".join(user_texts[-5:]))
     try:
         res = client.chat.completions.create(
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.4,
         )
@@ -123,6 +129,8 @@ def ask():
     sid = request.cookies.get("sid") or request.remote_addr
     history = histories.setdefault(sid, [])
     gyarumind_scores.setdefault(sid, [])
+    # ← ここで初期化！
+    lowest_items: list[str] = []
     user_msg = request.json.get("message", "").strip()
     if not user_msg:
         return jsonify({"answer": "え？なんて？💦"})
@@ -156,6 +164,14 @@ def ask():
             gyarumind_details_history.setdefault(sid, []).append(result["details"])
             gyarumind = result["total"]
 
+            # 最低スコアを探す
+            details = result["details"]
+            min_score = min(details.values())
+            lowest_items = [
+            k for k, v in details.items()
+            if v == min_score and k not in NEGATIVE_KEYS     # ★ ここで除外
+        ]
+
     score_list = gyarumind_scores[sid]
     average_score = round(sum(score_list) / len(score_list), 2) if score_list else None
 
@@ -173,7 +189,8 @@ def ask():
         "score_history": score_list,
         "average_score": average_score,
         "trend_message": trend_message,
-        "gyarumind_details_history": gyarumind_details_history.get(sid, [])
+        "gyarumind_details_history": gyarumind_details_history.get(sid, []),
+        "lowest_items": lowest_items
     }), 200
 
 
