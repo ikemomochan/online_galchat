@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プロフィール入力 | Gyarumind</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            background: url('/static/background2.png') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .left {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gyaru-img {
+            width: 50vmin;
+            height: 50vmin;
+            object-fit: cover;
+            border-radius: 20px;
+            box-shadow: 0 0 20px #ff69b4;
+            background: #fff0fa;
+            margin-top: 3em;
+        }
+    
+        .gyaru-message-box {
+            width: 60vmin;
+            margin: 2em auto 0 auto;
+            padding: 1em;
+            background: rgba(255,255,255,0.8);
+            border-radius: 15px;
+            box-shadow: 0 0 8px #ff69b4;
+            font-size: 1.5em;
+            color: #ff69b4;
+            text-align: center;
+        }
+        .right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .notebook-bg {
+            position: absolute;
+            width: 95%;
+            height: 95%;
+            top: 2.5%;
+            left: 2.5%;
+            z-index: 1;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .profile-form {
+            position: relative;
+            z-index: 2;
+            width: 65%;
+            margin: 2.5em auto 0 auto;
+            padding: 1.2em;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }
+        .profile-form label {
+            font-weight: bold;
+            color: #ff69b4;
+            font-size: 1.4em;
+        }
+        .profile-form input {
+            padding: 1em 0.7em;
+            border: 2px solid #ff69b4;
+            border-radius: 10px;
+            font-size: 1em;
+            background: #fff0fa;
+        }
+        .profile-form button {
+            padding: 1em;
+            background: linear-gradient(90deg, #ff69b4, #ffd700);
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 0 10px #ff69b4;
+            transition: background 0.3s;
+            width: 60%;
+            align-self: center;
+            margin-top: 2em;
+            margin-bottom: 0.5em;
+        }
+        .profile-form button:hover {
+            background: linear-gradient(90deg, #ffd700, #ff69b4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">
+            <img src="/static/gyaru_look_smartphone.png" alt="Gyaru" class="gyaru-img">
+            <div class="gyaru-message-box" id="gyaruMessageBox">
+                <!-- ここに任意のメッセージを入力してください -->
+                やほー！✨🌟あたしは今日からアナタの<br>
+                心の中でお世話になるギャル、<br>
+                「りりむー」でっす✌<br>
+                喋りまくって、あたしらのギャルマインド、<br>
+                アゲてこー👆👆💖💖<br>
+                とりまアナタのこと教えてもろて❣❣
+            </div>
+        </div>
+        <div class="right">
+            <img src="/static/notebook.png" alt="Notebook" class="notebook-bg">
+            <form class="profile-form" method="POST" action="/profile">
+                <label for="nickname">あだ名</label>
+                <input type="text" id="nickname" name="nickname" required>
+
+                <label for="hobby">趣味</label>
+                <input type="text" id="hobby" name="hobby" required>
+
+                <label for="job">職業</label>
+                <input type="text" id="job" name="job" required>
+
+                <label for="personality">性格</label>
+                <input type="text" id="personality" name="personality" required>
+
+                <button type="submit">よろしくね！（チャット開始）</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
