@@ -2,12 +2,17 @@ let currentDetailIndex = 0;
 let gyarumindDetailHistory = [];  // [{...8項目...}, ...]
 let scoreHistory = [];            // [total, ...]
 let gmChart = null;
+let currentGalMoodSrc = "/static/gyaru_default.png";  // tracks last non-thinking image
 
 document.addEventListener("DOMContentLoaded", () => {
   const chatArea = document.getElementById("chat-area");
   const form = document.getElementById("chat-form");
   const input = document.getElementById("message");
   const galImg = document.getElementById("gal-img");
+
+  if (galImg) {
+    currentGalMoodSrc = galImg.getAttribute("src") || currentGalMoodSrc;
+  }
 
   // タブとビューの切替え
   const tabChart = document.getElementById("tab-chart");
@@ -54,7 +59,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 返答を句点などで分割（配列/単文の両対応）
-  function renderGalReply(answer) {
+  function renderGalReply(answer, intent) {
+    // intentに応じて画像切り替え
+    const galImg = document.getElementById("gal-img");
+    if (galImg) {
+      const nextSrc = intent === "advice"
+        ? "/static/gyaru_advice.png"
+        : intent === "sympathy"
+          ? "/static/gyaru_sympathy.png"
+          : "/static/gyaru_default.png";
+      galImg.src = nextSrc;
+      currentGalMoodSrc = nextSrc;
+    }
     const emit = (arr) => {
       const seen = new Set();
       arr
@@ -88,13 +104,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setThinking(thinking = true) {
-    galImg.src = thinking ? "/static/gal_thinking.png" : "/static/gal_sample.png";
+    const galImg = document.getElementById("gal-img");
+    if (galImg) {
+      if (thinking) {
+        galImg.dataset.prevMoodSrc = galImg.getAttribute("src") || currentGalMoodSrc;
+        galImg.src = "/static/gyaru_thinking.png";
+      } else {
+        const fallback = currentGalMoodSrc || galImg.dataset.prevMoodSrc || "/static/gyaru_default.png";
+        galImg.src = fallback;
+        currentGalMoodSrc = fallback;
+        delete galImg.dataset.prevMoodSrc;
+      }
+    }
   }
 
   function updateAverage(score) {
     const avgElem = document.getElementById("gyarumind-average");
     if (score !== undefined && score !== null && !Number.isNaN(score)) {
-      avgElem.textContent = `Ave. GYARU-MIDX：${score}/50💖`;
+      avgElem.textContent = `Ave. GYARU-MIDX：${score}/50`;
     } else {
       avgElem.textContent = "";
     }
@@ -108,6 +135,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateGyarumind(score) {
     const gmEl = document.getElementById("gm-score");
     gmEl.textContent = (score ?? "--");
+    if (score !== undefined && score !== null && !Number.isNaN(score)) {
+      console.log("[GYARU-MIDX] Updated:", score);
+    }
   }
 
   function updateChart(historyArr) {
@@ -162,6 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = input.value.trim();
     if (!text) return;
 
+    console.log("[USER]", text);
     addBubble(text, "user");
     input.value = "";
     input.focus();
@@ -186,8 +217,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       console.log("パースできたJSON:", data);
 
-      loadingBubble.remove();
-      renderGalReply(data.answer);
+  loadingBubble.remove();
+  console.log("intent:", data.intent);
+  if (data?.answer !== undefined) {
+    const answerPayload = Array.isArray(data.answer) ? data.answer : String(data.answer ?? "");
+    console.log("[LLM]", answerPayload);
+  }
+  renderGalReply(data.answer, data.intent);
 
       // === 新API（gmdオブジェクト）にも旧APIにも対応（単一版） ===
       if (data?.gmd) {

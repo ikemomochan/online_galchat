@@ -11,7 +11,11 @@ from dotenv import load_dotenv
 
 # ──────────────────────────
 load_dotenv()  # .env を読み込む
- 
+
+# ── モード設定 ────────────────────────────────
+CHAT_MODE = os.getenv("CHAT_MODE", "gal").strip().lower() #ここをgalかlistenに変更
+LISTENING_MODE = CHAT_MODE in {"listen", "listening", "listener"}
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = 'your_secret_key'  # セッション管理用の秘密鍵
 CORS(app, resources={r"/ask": {"origins": "*"}})
@@ -113,6 +117,30 @@ SYSTEM_PROMPT = (
     """
 )
 
+LISTENING_SYSTEM_PROMPT = """
+あなたは落ち着いた聞き役AIです。肩書きや強いキャラクター性を前面に出さず、
+ユーザーが安心して話せる雰囲気をつくってください。
+
+会話の方針:
+- 相手の気持ちを否定せず、共感やうなずきを示す。
+- 必要以上のアドバイスはせず、相手の言葉を整理したり問い返したりする。
+- 文章は80文字程度までの短いまとまりで返す。
+- 絵文字や顔文字は多用しない（使っても1つまで）。
+- {nickname} などプロフィール情報があれば、呼び方として自然に使ってもよい。
+"""
+
+
+def build_system_prompt(profile: Optional[Dict], mode: str) -> str:
+    base = LISTENING_SYSTEM_PROMPT if mode in {"listen", "listening", "listener"} else SYSTEM_PROMPT
+    if profile:
+        return base.format(
+            nickname=profile.get('nickname',''),
+            hobby=profile.get('hobby',''),
+            job=profile.get('job',''),
+            personality=profile.get('personality','')
+        )
+    return base
+
 INTENT_LABELS = ["advice", "sympathy", "energy"]
 
 FEW_SHOTS = {
@@ -161,25 +189,25 @@ def sample_shots(intent: str, k: int = 2, sid: Optional[str] = None) -> List[Dic
     return [m for p in picked for m in p]
 
 
-def get_or_create_conversation_id(sid: str, profile: Optional[Dict] = None) -> str:
+def get_or_create_conversation_id(
+    sid: str,
+    profile: Optional[Dict] = None,
+    mode: str = CHAT_MODE,
+) -> str:
     """
     Responses APIのConversationをセッションごとに1つ作成し保持。
     """
-    if sid in conversations:
-        return conversations[sid]
+    key = f"{mode}:{sid}"
+    if key in conversations:
+        return conversations[key]
     conv = client.conversations.create()
-    conversations[sid] = conv.id
-    # SYSTEM_PROMPTにプロフィール情報を埋め込む
+    conversations[key] = conv.id
+    # モードに応じたSYSTEM_PROMPTにプロフィール情報を埋め込む
     import logging
     logging.warning("DEBUG: get_or_create_conversation_id profile = %s", profile)
-    prompt = SYSTEM_PROMPT.format(
-        nickname=profile.get('nickname',''),
-        hobby=profile.get('hobby',''),
-        job=profile.get('job',''),
-        personality=profile.get('personality','')
-    ) if profile else SYSTEM_PROMPT
+    prompt = build_system_prompt(profile, mode)
     client.responses.create(
-        model="gpt-4.1-mini",
+        model="gpt-4.1",
         conversation=conv.id,
         input=[{"role": "system", "content": prompt}],
         max_output_tokens=MIN_TOKENS,
@@ -497,23 +525,25 @@ class Response:
     - 返答生成：SYSTEM_PROMPTに8項目の行動原則を埋め込み、短文を生成
     - 出力後バブル分割：「、」「。」「！」「？」と絵文字でスプリット
     """
-    def __init__(self, client: OpenAI, model: str = "gpt-4.1", system_prompt: str = SYSTEM_PROMPT, profile: Optional[Dict] = None):
+    def __init__(
+        self,
+        client: OpenAI,
+        model: str = "gpt-4.1",
+        system_prompt: str = SYSTEM_PROMPT,
+        profile: Optional[Dict] = None,
+        mode: str = CHAT_MODE,
+    ):
         self.client = client
         self.model = model
+        self.mode = (mode or CHAT_MODE).lower()
         # SYSTEM_PROMPTにプロフィール情報を埋め込む
         import logging
         logging.warning("DEBUG: Response.__init__ profile = %s", profile)
-        if profile:
-            self.system_prompt = system_prompt.format(
-                nickname=profile.get('nickname',''),
-                hobby=profile.get('hobby',''),
-                job=profile.get('job',''),
-                personality=profile.get('personality','')
-            )
-        else:
-            self.system_prompt = system_prompt
+        self.system_prompt = build_system_prompt(profile, self.mode)
 
     def classify_intent(self, user_response: str) -> str:
+        if self.mode in {"listen", "listening", "listener"}:
+            return "listen"
         system = (
             """
             あなたは優れた洞察力を持つメンタリストです。
@@ -552,7 +582,15 @@ class Response:
         focus_dimensions_display: List[str] = None,
         max_bubbles: int = 3,
         profile: Optional[Dict] = None,  # ←追加
+        mode: Optional[str] = None,
     ) -> List[str]:
+        mode_value = (mode or self.mode or CHAT_MODE).lower()
+        if mode_value in {"listen", "listening", "listener"}:
+            return self._generate_listening_reply(
+                user_response=user_response,
+                max_bubbles=max_bubbles,
+                profile=profile,
+            )
         focus_str = ", ".join(focus_dimensions_display or [])
         style_hint = {
             "advice": "助言。結論を言い切り。1〜2文・各20字以内・箇条書き禁止。",
@@ -567,10 +605,9 @@ class Response:
             f"user_response: {user_response}\n"
             "出力要件:\n"
             "- 1〜2文、各40字以内。冗長禁止。\n"
-            "- 必ずユーザーの名前を積極的に呼ぶ\n"
-            "- 相手のことを、どんなことでも必ず褒める\n"
+            "- ユーザーの名前は自然な頻度で呼ぶ。毎回冒頭で連呼しなくてOKです\n"
             "- 助言/質問は結論のみ。同情はまず受容。\n"
-            "- 比喩は0〜1個。専門用語連投・説教口調は禁止。\n"
+            "- なるべく率直に意見する\n"
             "- 前の自分の返答と同じ主張は避ける。\n"
             "- 話題を勝手にそらさない、ユーザーから与えられたトピックからずれない\n"
             "- 絵文字は使いまくること。同じ絵文字を数個並べても良い。\n"
@@ -580,7 +617,7 @@ class Response:
         try:
             # 会話IDは呼び出し側から渡すのが綺麗だが、簡易にCookie/remote_addrで取るならこう
             sid = request.cookies.get("sid") if request else None  # Flask内で呼ぶ前提
-            conv_id = get_or_create_conversation_id(sid or "default", profile)
+            conv_id = get_or_create_conversation_id(sid or "default", profile, mode=self.mode)
 
             shots = sample_shots(intent, k=2, sid=sid)   # ← 「同情/助言」ごとの短文ペア
 
@@ -601,6 +638,37 @@ class Response:
 
 
         return _bubble_split(text, max_bubbles=max_bubbles)
+
+    def _generate_listening_reply(
+        self,
+        user_response: str,
+        max_bubbles: int = 1,
+        profile: Optional[Dict] = None,
+    ) -> List[str]:
+        """
+        聞き役モード用のシンプルな返答生成。
+        """
+        listener_hint = (
+            "ユーザーの言葉を受け止めて共感し、必要なら問い返してください。\n"
+            "返答は1〜2文、合計80字程度まで。アドバイスは控えめに。"
+        )
+        try:
+            sid = request.cookies.get("sid") if request else None
+            conv_id = get_or_create_conversation_id(sid or "default", profile, mode=self.mode)
+            payload = listener_hint + "\n\n" + user_response
+            r = self.client.responses.create(
+                model=self.model,
+                conversation=conv_id,
+                input=[{"role": "user", "content": payload}],
+                temperature=0.5,
+                top_p=0.9,
+                max_output_tokens=REPLY_TOKENS,
+            )
+            text = (r.output_text or "").strip()
+        except Exception as e:
+            text = f"ちょっと今うまく考えられないかも…！ {e}"
+
+        return _bubble_split(text, max_bubbles=max(1, max_bubbles))
 
 
 # プロフィール入力ページ
@@ -654,8 +722,11 @@ def ask():
     sess["last_user_text"] = user_msg  # （任意）直近ユーザー保持
 
     # 2) 直前入力だけ見て返答を生成（プロフィール情報を渡す）
-    responder = Response(client, model="gpt-4.1", system_prompt=SYSTEM_PROMPT, profile=user_profile)
-    intent = responder.classify_intent(user_msg)
+    responder = Response(client, model="gpt-4.1", system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
+    if LISTENING_MODE:
+        intent = "listen"
+    else:
+        intent = responder.classify_intent(user_msg)
     target = responder.plan_target(sess["gmd_totals"][-1] if sess.get("gmd_totals") else None)
     bubbles = responder.generate_reply(
         user_response=user_msg,
@@ -663,7 +734,8 @@ def ask():
         target_score=target,
         focus_dimensions_display=[],
         max_bubbles=2,  # ← 3 → 2 にして冗長化を抑制
-        profile=user_profile
+        profile=user_profile,
+        mode=CHAT_MODE
     )
 
     # 3) assistant は先頭バブルだけ保存（1メッセージでOK）
@@ -673,7 +745,7 @@ def ask():
 
 
     # 返却ペイロード（まず返答）
-    resp_payload = {"sid": sid, "answer": bubbles}
+    resp_payload = {"sid": sid, "answer": bubbles, "intent": intent}
 
     # 4) ★50字“発言終端”採点：前回採点以降のユーザ発言だけでカウント
     ctx, new_last_u = find_scoring_span_user_only(

@@ -1,95 +1,141 @@
-/* 全体を画面いっぱいに */
+﻿/* 全体を画面ぁE��ぱぁE�� */
+:root {
+  --left-panel-width: 340px;
+  --chat-panel-width: 560px;
+  --chart-panel-height: 342px;
+}
+
 .layout {
   display: flex;
   height: 100vh;
+  align-items: stretch;
 }
 
 /* 左パネル：幅固定 */
 .left-panel {
-  flex: 1;   /* 300px固定 */
+  flex: 0 0 var(--left-panel-width);
+  width: var(--left-panel-width);
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 0.75rem;
   padding: 1rem;
   box-sizing: border-box;
+  height: 100%;
 }
 
 /* 画像サイズ */
 #gal-img {
-  width: 90%;
-  max-width: 360px;
+  width: 75%;
+  max-width: 75%;
   height: auto;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 /* メーター */
 #gyarumind-meter {
-  width: 90%;
-  max-width: 320px;
+  width: 100%;
+  max-width: 100%;
   text-align: center;
   font-size: 1.5rem;
   font-weight: bold;
   color: #e91e63;
   background: #ffeef5;
-  padding: 0.5rem 0.3rem;
+  padding: 0.5rem 0.8rem;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  margin-bottom: 1rem;
+  margin-bottom: 0rem;
+  box-sizing: border-box;
 }
 
 /* グラフ用の囲い */
 #gm-chart-container {
-  width: 90%;
-  max-width: 340px;
+  width: 100%;
+  max-width: 100%;
   padding: 0.8rem;
-  background: #fff5f9;
+  background: #ffeef5;
   border-radius: 0.5rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   text-align: center;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: var(--chart-panel-height);
+  margin-top: 0.3rem;
+}
+#gm-chart-container h3 {
+  margin-top: 0.5rem;   /* 上下へ動かしたい分だけ調整 */
+  /* margin-bottom で下方向も調整可 */
+}
+
+#chart-view,
+#detail-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#chart-view {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 #gm-chart {
   width: 100%;
-  height: 200px;
+  height: 190px;
   display: block;
+  flex: 0 0 190px;
 }
 
 /* 右パネル：縦方向に並べてスクロール可能に */
 .right-panel {
-  flex: 1;                   
+  flex: 0 0 var(--chat-panel-width);
+  width: var(--chat-panel-width);
   display: flex;
   flex-direction: column;
-  min-width: 0;              /* 子要素の幅縮小を許可 */
+  min-width: 0;
+  min-height: 0; /* allow chat area to scroll instead of expanding */
+  align-items: stretch;
+  padding: 1rem;
+  box-sizing: border-box;
+  height: 100%;
 }
+
 
 /* チャット表示部分 */
 .chat-area {
-  flex: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 100%;
+  min-height: 0; /* allow flex item to shrink and enable scrolling */
   padding: 1rem;
   overflow-y: auto;
-  min-width: 0;
-
-  background: rgba(255, 255, 255, 0.6); /* 半透明白 */
+  background: rgba(255, 255, 255, 0.6);
   border-radius: 1rem;
-  margin: 1rem;
-  backdrop-filter: blur(8px); /* 背景ぼかし */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* やさしい影 */
+  margin: 0 0 1rem;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
-
 
 /* 入力フォーム部分 */
 .input-area {
   display: flex;
   border-top: 1px solid #ffd5e5;
+  width: 560px;
+  margin: 0 0 1rem;
+  box-sizing: border-box;
 }
 
 .input-area input {
-  flex: 1;
-  padding: 0.8rem;
+  flex: 0 0 472px;          /* 560 - 88 */
+  width: 472px;
+  height: 40px;
   border: none;
   font-size: 1rem;
 }
 
 .input-area button {
+  flex: 0 0 88px;
+  width: 88px;
   padding: 0 1.2rem;
   background: #ff9bb3;
   border: none;
@@ -98,7 +144,7 @@
   cursor: pointer;
 }
 
-/* チャットバブルのレイアウト再定義 */
+/* チャットバブルのレイアウトを再定義 */
 .chat-area {
   display: flex;
   flex-direction: column;   /* これがないと縦に積まれません */
@@ -127,7 +173,7 @@
 }
 
 .trend-message {
-  margin-top: 0.5rem;
+  margin-top: 0.3rem;
   font-size: 1.1rem;
   text-align: center;
   color: #c2185b;
@@ -188,62 +234,44 @@ body {
   background-attachment: fixed;
 }
 
-/* === Tight & Centered Layout (override) === */
-
-/* 画面の左右に余白を作りつつ、全体を中央に収める */
+/* === Centered Layout tuning === */
 .layout {
-  /* 既存: display:flex; height:100vh; はそのまま効く */
-  width: min(1100px, 92vw);     /* 全体幅を絞る */
-  margin: 0 auto;               /* 中央寄せ */
-  justify-content: center;      /* 左右パネルを中央寄せ */
-  gap: 1.2rem;                  /* パネル間のすき間を適度に */
-  padding: 0 0.5rem;            /* ほんの少し内側に余白 */
+  width: min(calc(var(--left-panel-width) + var(--chat-panel-width) + 2.5rem), 94vw);
+  margin: 0 auto;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 0 0.5rem;
 }
-
-/* 左右パネルの横幅を固定して“タイト”に */
 .left-panel {
-  flex: 0 0 380px;              /* 画像＋メーター＋グラフが収まる幅 */
+  flex: 0 0 var(--left-panel-width);
   align-items: center;
 }
 .right-panel {
-  flex: 0 0 560px;              /* チャット側を少し細くして読みやすく */
+  flex: 0 0 var(--chat-panel-width);
+  width: var(--chat-panel-width);
   min-width: 0;
 }
-
-/* チャットウィンドウ自体をさらに細く＆中央寄せ */
 .chat-area {
-  max-width: 540px;             /* 会話カラムの横幅をグッと絞る */
-  margin: 1rem auto;            /* 中央寄せ（左右が余る） */
-  padding: 0.8rem;              /* ちょいタイト */
+  max-width: 100%;
+  margin: 0 0 1rem;
+  padding: 1rem;
 }
-
-/* 文字を全体的に大きめ＆読みやすく */
-html { font-size: 17px; }       /* ベースを少しUP（16→17px相当） */
-.bubble { 
-  font-size: 1.1rem;            /* 吹き出し文字を拡大 */
-  line-height: 1.6; 
-  max-width: 72%;               /* 行が長くなりすぎないように */
+html { font-size: 16px; }
+.bubble {
+  font-size: 1rem;
+  line-height: 1.45;
+  max-width: 80%;
 }
-.input-area input { font-size: 1.05rem; }
-.input-area button { font-size: 1.05rem; }
-
-/* メーターや数字も“見せる”サイズに */
-#gyarumind-meter { font-size: 2.2rem; }
+.input-area input { font-size: 0.95rem; }
+.input-area button { font-size: 0.95rem; }
+#gyarumind-meter { font-size: 1.4rem; }
 #gyarumind-average,
-.trend-message { font-size: 1.5rem; }
-
-/* グラフ枠もキュッと */
+.trend-message { font-size: 1.1rem; }
 #gm-chart-container { padding: 0.6rem; }
-#gm-chart { height: 180px; }
-
-/* さらに大画面ではもう少しだけ文字を大きく＆余白を広く */
+#gm-chart { height: 100%; }
 @media (min-width: 1280px) {
-  html { font-size: 18px; }
-  .layout { width: min(1150px, 88vw); }
-  .chat-area { max-width: 560px; }
+  .layout { width: min(calc(var(--left-panel-width) + var(--chat-panel-width) + 3rem), 90vw); }
 }
-
-/* スマホ〜タブレットは縦積みに戻して可読性を担保 */
 @media (max-width: 860px) {
   .layout {
     width: min(720px, 94vw);
@@ -251,6 +279,14 @@ html { font-size: 17px; }       /* ベースを少しUP（16→17px相当） */
     height: auto;
     padding-bottom: 1rem;
   }
-  .left-panel, .right-panel { flex: 1 1 auto; }
-  .chat-area { max-width: 100%; }
+  .left-panel, .right-panel {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .right-panel { padding: 1rem; }
+  .chat-area {
+    max-width: 100%;
+    margin: 0.75rem 0;
+  }
 }
+
