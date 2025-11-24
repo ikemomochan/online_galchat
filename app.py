@@ -190,7 +190,7 @@ def find_scoring_span_user_only(history: List[Dict], last_user_idx: int, thresho
 # Scoring Class
 # ==========================
 class Scoring:
-    def __init__(self, client: OpenAI, model: str = "gpt-4.1", window_chars: int = 50):
+    def __init__(self, client: OpenAI, model: str = "gpt-4.1-mini-mini", window_chars: int = 50):
         self.client = client
         self.model = model
         self.window_chars = window_chars
@@ -361,7 +361,7 @@ def ask():
     sess["history"].append({"role": "user", "content": user_msg})
 
     # AI返答生成
-    responder = Response(client, model="gpt-4.1", system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
+    responder = Response(client, model="gpt-4.1-mini", system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
     intent = responder.classify_intent(user_msg)
     target = responder.plan_target(sess["gmd_totals"][-1] if sess.get("gmd_totals") else None)
     
@@ -389,7 +389,7 @@ def ask():
     # 採点ロジック
     ctx, new_last_u = find_scoring_span_user_only(sess["history"], sess.get("last_scored_user_idx", -1))
     if ctx:
-        scorer = Scoring(client, model="gpt-4.1", window_chars=50)
+        scorer = Scoring(client, model="gpt-4.1-mini", window_chars=50)
         result = scorer.score_from_context(ctx)
         sess["last_scored_user_idx"] = new_last_u
         sess["gmd_totals"].append(result["total"])
