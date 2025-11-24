@@ -2,213 +2,52 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロフィール入力 | Gyarumind</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gyarumind Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* 簡易スタイル（本来はstyle.cssに入れてもOK） */
         body {
-            background: url('/static/background2.png') no-repeat center center fixed;
-            background-size: cover;
-            margin: 0;
-            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+            margin: 0; padding: 0;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%);
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            height: 100vh;
+            display: flex; align-items: center; justify-content: center;
         }
-        .container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4vw;
-            padding: 5vh 5vw;
-            min-height: 100vh;
-            box-sizing: border-box;
+        .login-card {
+            background: rgba(255,255,255,0.9);
+            padding: 2rem; border-radius: 24px;
+            text-align: center; width: 85%; max-width: 320px;
+            box-shadow: 0 10px 25px rgba(233,30,99,0.2);
         }
-        .left {
-            flex: 0 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
+        .gal-icon {
+            width: 100px; height: 100px; border-radius: 50%;
+            border: 4px solid #ff69b4; background: #ffeef5;
+            object-fit: cover; margin-bottom: 1rem;
         }
-        .gyaru-img {
-            width: min(44vmin, 360px);
-            height: auto;
-            object-fit: cover;
-            border-radius: 20px;
-            box-shadow: 0 0 18px rgba(255, 105, 180, 0.4);
-            background: #fff0fa;
-            margin-top: 0.8em;
+        input {
+            width: 100%; padding: 12px;
+            border: 2px solid #ffc1e3; border-radius: 12px;
+            font-size: 1rem; text-align: center;
+            box-sizing: border-box; margin-bottom: 1.5rem;
         }
-
-        .gyaru-message-box {
-            width: min(49vmin, 350px);
-            margin: 1.0em auto 0 auto;
-            padding: 0.9em 1.1em;
-            background: rgba(255,255,255,0.82);
-            border-radius: 15px;
-            box-shadow: 0 0 10px rgba(255, 105, 180, 0.35);
-            font-size: 1.32em;
-            color: #ff69b4;
-            text-align: center;
-            line-height: 1.55;
-        }
-        .right {
-            flex: 0 0 auto;
-            width: min(60vw, 640px);
-            max-width: 600px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        .notebook-bg {
-            position: absolute;
-            width: 100%;
-            height: auto;
-            top: 0;
-            left: -2%;
-            z-index: 1;
-            object-fit: contain;
-            pointer-events: none;
-        }
-        .profile-form {
-            position: relative;
-            z-index: 2;
-            width: 120%;
-            max-width: 450px;
-            margin: 16% auto 14%;
-            padding: 1em 1.3em 1.2em;
-            border-radius: 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.6em;
-        }
-        .profile-form input {
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid #ff69b4;
-            font-size: 0.95em;
-            padding: 0.05em 0.3em;
-            margin: 0 0.2em;
-            outline: none;
-            width: clamp(5ch, 32%, 9ch);
-            min-width: 6ch;
-            color: #cc2d78;
-            text-align: center;
-        }
-        .profile-form input::placeholder {
-            color: rgba(204, 45, 120, 0.45);
-        }
-        .prompt-line {
-            margin: 0.25em 0;
-            font-size: 1.32em;
-            color: #d93a8d;
-            line-height: 1.32;
-            letter-spacing: 0.03em;
-            text-align: left;
-        }
-        .prompt-line input {
-            width: auto;
-            display: inline-block;
-        }
-        .blank-wrapper {
-            display: inline-block;
-        }
-        .blank-helper {
-            display: none;
-        }
-        .text-frag {
-            display: inline-block;
-        }
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-        .profile-form button {
-            padding: 0.85em;
-            background: linear-gradient(90deg, #ff69b4, #ffd700);
-            color: #fff;
-            font-weight: bold;
-            border: none;
-            border-radius: 14px;
-            font-size: 1.05em;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(255, 105, 180, 0.4);
-            transition: background 0.3s;
-            width: 65%;
-            align-self: flex-start;
-            margin-top: 3.7em;
-            margin-bottom: 0;
-        }
-        .profile-form button:hover {
-            background: linear-gradient(90deg, #ffd700, #ff69b4);
+        button {
+            width: 100%; padding: 14px;
+            background: linear-gradient(90deg, #ff69b4, #ff8da1);
+            color: white; border: none; border-radius: 50px;
+            font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255,105,180,0.4);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="left" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">
-            <img src="/static/gyaru_smartphone.png" alt="Gyaru" class="gyaru-img">
-            <div class="gyaru-message-box" id="gyaruMessageBox">
-                <!-- ここに任意のメッセージを入力してください -->
-                やほー！✨🌟あたしは今日から<br>
-                アナタの心の中でお世話になる<br>
-                ギャル、「りりむー」でっす✌<br>
-                喋りまくって、あたしらのギャル<br>
-                マインド、アゲてこー👆👆💖💖<br>
-                とりまアナタのこと教えてもろて❣❣
-            </div>
-        </div>
-        <div class="right">
-            <img src="/static/notebook.png" alt="Notebook" class="notebook-bg">
-            <form class="profile-form" method="POST" action="/profile">
-                                <p class="prompt-line">あなたについて教えて🌟</p>
-<label class="sr-only" for="nickname">あだ名</label>
-                <p class="prompt-line">
-                    <span class="text-frag">みんなからは、</span>
-                    <span class="blank-wrapper">
-                        <span class="blank-helper">あだ名</span>
-                        <input type="text" id="nickname" name="nickname" required placeholder="あだ名">
-                    </span>
-                    <span class="text-frag">って呼ばれてるよー！
-                </p>
-
-                <label class="sr-only" for="job">職業</label>
-                <p class="prompt-line">
-                    いつもは
-                    <span class="blank-wrapper">
-                        <span class="blank-helper">おしごと</span>
-                        <input type="text" id="job" name="job" required placeholder="おしごと">
-                    </span>
-                    をしていて、
-                </p>
-
-                <label class="sr-only" for="hobby">趣味</label>
-                <p class="prompt-line">
-                    <span class="blank-wrapper">
-                        <span class="blank-helper">趣味</span>
-                        <input type="text" id="hobby" name="hobby" placeholder="趣味">
-                    </span>
-                    が大好き！
-                </p>
-
-                <label class="sr-only" for="personality">性格</label>
-                <p class="prompt-line">
-                    <span class="blank-wrapper">
-                        <span class="blank-helper">チャームポイント</span>
-                        <input type="text" id="personality" name="personality" required placeholder="チャームポイント">
-                    </span>
-                    な性格が自分ではかわいいって思ってる！
-                </p>
-
-                <button type="submit">よろしくね！（チャット開始）</button>
-            </form>
-        </div>
+    <div class="login-card">
+        <img src="/static/gyaru_default.png" alt="icon" class="gal-icon">
+        <h1 style="color:#d81b60; font-size:1.4rem;">名前教えて💖</h1>
+        <form action="/profile" method="POST">
+            <input type="text" name="nickname" placeholder="あだ名を入力（またはadmin）" required>
+            <button type="submit">スタート✨</button>
+        </form>
     </div>
 </body>
 </html>

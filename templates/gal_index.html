@@ -2,68 +2,66 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>ギャルとチャットしよ💖</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chat with Ririmu</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
   <script defer src="{{ url_for('static', filename='script.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <!-- 左：ギャル画像とギャルマイン度 -->
-    <div class="left-panel">
-      <img id="gal-img" src="/static/gyaru_default.png" alt="ギャルAI">
-      <div id="gyarumind-meter">
-        <!-- ギャルマイン度：<span id="gm-score">--</span>/50💖 -->
-        GYARU-MIDX：<span id="gm-score">--</span>/50
+
+  <header class="app-header">
+    <div class="header-left">
+      <div class="avatar-circle">
+        <img id="header-gal-img" src="/static/gyaru_default.png" alt="">
       </div>
-      <div id="gm-chart-container">
-        <!-- <h3 style="margin-bottom: 0.5rem;">ギャルマイン度の変化📈</h3> -->
-        <h3 style="margin-bottom: 0.5rem;">GYARU-MIDX Progress📈</h3>
-
-        <!-- タブ切り替え -->
-        <div class="tab-buttons">
-          <!-- <button id="tab-chart" class="active">📈 推移</button> -->
-          <button id="tab-chart" class="active">📈 Trend</button>
-          <!-- <button id="tab-detail">📋 内訳</button> -->
-          <button id="tab-detail">📋 Split</button>
-
-        </div>
-
-        <!-- グラフ -->
-        <div id="chart-view">
-          <canvas id="gm-chart" width="300" height="180"></canvas>
-        </div>
-
-        <!-- 各項目テーブル -->
-        <div id="detail-view" style="display: none;">
-          <div id="detail-nav">
-            <button id="prev-detail">←</button>
-            <span id="detail-index">#--</span>
-            <button id="next-detail">→</button>
-          </div>
-          <table id="gyarumind-detail-table"></table>
-        </div>
-
-        <!-- <div id="gyarumind-average">平均ギャルマイン度：--/50💖</div> -->
-        <div id="gyarumind-average">Ave. GYARU-MIDX：--/50💖</div>
-        <!-- <div id="trend-message" class="trend-message">変化メッセージ表示予定💖</div> -->
-        <div id="trend-message" class="trend-message">Upcoming Change ⌚</div>
+      <div class="gal-info">
+        <span class="gal-name">りりむー</span>
+        <span id="timer-display" style="font-size:0.8rem; color:#d81b60; margin-left:8px;">残り 05:00</span>
       </div>
     </div>
+    <button id="score-btn" class="score-badge">
+      <span>GalMind</span>
+      <span id="header-score" class="score-value">--</span>
+    </button>
+  </header>
 
-    <!-- 右：チャットエリア -->
-    <div class="right-panel">
-      <div id="chat-area" class="chat-area"></div>
-      <form id="chat-form" class="input-area">
-        <!-- <input id="message" type="text" autocomplete="off" placeholder="メッセージを入力…" /> -->
-        <input id="message" type="text" autocomplete="off" placeholder="Start typing…" />
-        <!-- <button type="submit">送信📤</button> -->
-        <button type="submit">send</button>
-      </form>
+  <main id="chat-area" class="chat-container">
+    <div class="bubble gal">
+        やほー！💖<br>今日もアゲてこーね！
+    </div>
+  </main>
+
+  <footer class="input-container">
+    <form id="chat-form" class="input-box">
+      <input id="message" type="text" autocomplete="off" placeholder="メッセージ..." />
+      <button type="submit">送信</button>
+    </form>
+  </footer>
+
+  <div id="stats-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button id="close-modal" class="close-btn">×</button>
+      <h2 style="text-align:center; color:#d81b60;">ギャルマインド分析📈</h2>
+      
+      <div class="chart-wrapper">
+        <canvas id="gm-chart"></canvas>
+      </div>
+
+      <div class="details-wrapper">
+        <h3 style="color:#d81b60;">内訳チェック📋</h3>
+        <div class="nav-row" style="text-align:center; margin-bottom:5px;">
+            <button id="prev-detail">◀</button>
+            <span id="detail-index">#--</span>
+            <button id="next-detail">▶</button>
+        </div>
+        <table id="gyarumind-detail-table"></table>
+      </div>
+      
+      <div id="trend-message" class="trend-text" style="text-align:center; margin-top:10px; color:#c2185b;"></div>
     </div>
   </div>
 
 </body>
 </html>
-
-

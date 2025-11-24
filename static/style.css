@@ -1,292 +1,82 @@
-﻿/* 全体を画面ぁE��ぱぁE�� */
-:root {
-  --left-panel-width: 340px;
-  --chat-panel-width: 560px;
-  --chart-panel-height: 342px;
-}
-
-.layout {
-  display: flex;
-  height: 100vh;
-  align-items: stretch;
-}
-
-/* 左パネル：幅固定 */
-.left-panel {
-  flex: 0 0 var(--left-panel-width);
-  width: var(--left-panel-width);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  box-sizing: border-box;
-  height: 100%;
-}
-
-/* 画像サイズ */
-#gal-img {
-  width: 75%;
-  max-width: 75%;
-  height: auto;
-  margin-bottom: 0.3rem;
-}
-
-/* メーター */
-#gyarumind-meter {
-  width: 100%;
-  max-width: 100%;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #e91e63;
-  background: #ffeef5;
-  padding: 0.5rem 0.8rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  margin-bottom: 0rem;
-  box-sizing: border-box;
-}
-
-/* グラフ用の囲い */
-#gm-chart-container {
-  width: 100%;
-  max-width: 100%;
-  padding: 0.8rem;
-  background: #ffeef5;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  text-align: center;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  height: var(--chart-panel-height);
-  margin-top: 0.3rem;
-}
-#gm-chart-container h3 {
-  margin-top: 0.5rem;   /* 上下へ動かしたい分だけ調整 */
-  /* margin-bottom で下方向も調整可 */
-}
-
-#chart-view,
-#detail-view {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-#chart-view {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-}
-#gm-chart {
-  width: 100%;
-  height: 190px;
-  display: block;
-  flex: 0 0 190px;
-}
-
-/* 右パネル：縦方向に並べてスクロール可能に */
-.right-panel {
-  flex: 0 0 var(--chat-panel-width);
-  width: var(--chat-panel-width);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0; /* allow chat area to scroll instead of expanding */
-  align-items: stretch;
-  padding: 1rem;
-  box-sizing: border-box;
-  height: 100%;
-}
-
-
-/* チャット表示部分 */
-.chat-area {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 100%;
-  min-height: 0; /* allow flex item to shrink and enable scrolling */
-  padding: 1rem;
-  overflow-y: auto;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 1rem;
-  margin: 0 0 1rem;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* 入力フォーム部分 */
-.input-area {
-  display: flex;
-  border-top: 1px solid #ffd5e5;
-  width: 560px;
-  margin: 0 0 1rem;
-  box-sizing: border-box;
-}
-
-.input-area input {
-  flex: 0 0 472px;          /* 560 - 88 */
-  width: 472px;
-  height: 40px;
-  border: none;
-  font-size: 1rem;
-}
-
-.input-area button {
-  flex: 0 0 88px;
-  width: 88px;
-  padding: 0 1.2rem;
-  background: #ff9bb3;
-  border: none;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* チャットバブルのレイアウトを再定義 */
-.chat-area {
-  display: flex;
-  flex-direction: column;   /* これがないと縦に積まれません */
-  gap: 0.5rem;              /* バブル同士の隙間 */
-}
-
-/* バブル共通スタイル */
-.bubble {
-  max-width: 80%;
-  padding: 0.6rem 0.9rem;
-  border-radius: 1rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
-}
-
-/* ユーザー発言バブル */
-.bubble.user {
-  background: #f0f0f0;
-  align-self: flex-end;
-}
-
-/* ギャル発言バブル */
-.bubble.gal {
-  background: #ffcee0;
-  align-self: flex-start;
-}
-
-.trend-message {
-  margin-top: 0.3rem;
-  font-size: 1.1rem;
-  text-align: center;
-  color: #c2185b;
-  font-weight: bold;
-}
-
-#gyarumind-average {
-  margin-top: 0.3rem;
-  font-size: 1.2rem;
-  text-align: center;
-  color: #ba1b5d;
-  font-weight: bold;
-}
-
-#gyarumind-detail-table td {
-  padding: 0.5rem;
-  border-bottom: 1px solid #ffc5d9;
-}
-
-#gyarumind-detail-table td:first-child {
-  font-weight: bold;
-  color: #c2185b;
-}
-
-.tab-buttons {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.tab-buttons button {
-  padding: 4px 10px;
-  font-size: 14px;
-  border: none;
-  border-radius: 6px;
-  background-color: #ffd8e8;
-  cursor: pointer;
-}
-
-.tab-buttons button.active {
-  background-color: #e91e63;
-  color: white;
-}
-.bubble.advice {
-  background-color: #E6E6FA;
-  color: #4B0082;
-  align-self: flex-start;
-  padding: 0.6rem 0.9rem;
-  border-radius: 1rem;
-  font-style: italic;
+﻿:root {
+  --header-height: 60px;
+  --footer-height: 70px;
+  --gal-bg: #ffffff;
+  --user-bg: #ff9bb3;
 }
 
 body {
-  background-image: url("bg1.png");
+  margin: 0; padding: 0;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  background-color: #a0c4ff; /* LINEっぽい背景色 */
+  background-image: url("bg1.png"); /* 背景画像がある場合 */
   background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  height: 100vh;
+  display: flex; flex-direction: column;
+  overflow: hidden; /* 全体スクロール禁止 */
 }
 
-/* === Centered Layout tuning === */
-.layout {
-  width: min(calc(var(--left-panel-width) + var(--chat-panel-width) + 2.5rem), 94vw);
-  margin: 0 auto;
-  justify-content: center;
-  gap: 1.2rem;
-  padding: 0 0.5rem;
+/* ヘッダー */
+.app-header {
+  height: var(--header-height);
+  background: rgba(255, 255, 255, 0.95);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 15px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  z-index: 10;
 }
-.left-panel {
-  flex: 0 0 var(--left-panel-width);
-  align-items: center;
+.header-left { display: flex; align-items: center; gap: 10px; }
+.avatar-circle img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #ff69b4; }
+.gal-name { font-weight: bold; font-size: 0.9rem; }
+
+.score-badge {
+  background: #ff69b4; color: white; border: none; border-radius: 20px;
+  padding: 5px 12px; font-size: 0.8rem; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
 }
-.right-panel {
-  flex: 0 0 var(--chat-panel-width);
-  width: var(--chat-panel-width);
-  min-width: 0;
+
+/* チャットエリア */
+.chat-container {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto; /* ここだけスクロール */
+  display: flex; flex-direction: column; gap: 15px;
+  -webkit-overflow-scrolling: touch;
 }
-.chat-area {
-  max-width: 100%;
-  margin: 0 0 1rem;
-  padding: 1rem;
-}
-html { font-size: 16px; }
+
 .bubble {
-  font-size: 1rem;
-  line-height: 1.45;
-  max-width: 80%;
+  max-width: 75%; padding: 10px 14px; border-radius: 18px;
+  font-size: 0.95rem; line-height: 1.4; word-wrap: break-word;
 }
-.input-area input { font-size: 0.95rem; }
-.input-area button { font-size: 0.95rem; }
-#gyarumind-meter { font-size: 1.4rem; }
-#gyarumind-average,
-.trend-message { font-size: 1.1rem; }
-#gm-chart-container { padding: 0.6rem; }
-#gm-chart { height: 100%; }
-@media (min-width: 1280px) {
-  .layout { width: min(calc(var(--left-panel-width) + var(--chat-panel-width) + 3rem), 90vw); }
+.bubble.gal { align-self: flex-start; background: var(--gal-bg); border-top-left-radius: 4px; }
+.bubble.user { align-self: flex-end; background: var(--user-bg); color: white; border-top-right-radius: 4px; }
+
+/* 入力エリア */
+.input-container {
+  height: var(--footer-height); background: white;
+  padding: 0 10px; display: flex; align-items: center;
 }
-@media (max-width: 860px) {
-  .layout {
-    width: min(720px, 94vw);
-    flex-direction: column;
-    height: auto;
-    padding-bottom: 1rem;
-  }
-  .left-panel, .right-panel {
-    flex: 1 1 auto;
-    width: 100%;
-  }
-  .right-panel { padding: 1rem; }
-  .chat-area {
-    max-width: 100%;
-    margin: 0.75rem 0;
-  }
+.input-box { width: 100%; display: flex; gap: 10px; }
+.input-box input { flex: 1; background: #f0f2f5; border: none; padding: 12px; border-radius: 20px; }
+.input-box button {
+  width: 50px; background: #ff69b4; color: white; border: none; border-radius: 20px; cursor: pointer;
 }
 
+/* モーダル */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.3s;
+}
+.hidden { opacity: 0; pointer-events: none; }
+.modal-content {
+  background: white; width: 90%; max-width: 400px; border-radius: 20px; padding: 20px;
+  max-height: 80vh; overflow-y: auto; position: relative;
+}
+.close-btn {
+  position: absolute; top: 10px; right: 10px;
+  background: #eee; border: none; width: 30px; height: 30px; border-radius: 50%;
+}
+#gyarumind-detail-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+#gyarumind-detail-table td { padding: 6px; border-bottom: 1px solid #ffeef5; }
