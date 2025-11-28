@@ -176,15 +176,27 @@ def _bubble_split(text: str, max_bubbles: int = 3) -> List[str]:
     if not chunks: chunks = [s]
     return chunks[:max_bubbles]
 
-def find_scoring_span_user_only(history: List[Dict], last_user_idx: int, threshold: int = 50):
-    user_texts = [m for m in history if m.get("role") == "user"]
-    # 実際の実装はindex管理が複雑になるため、簡易的に「直近の未採点発言」を取得するロジック推奨
-    # 今回はシンプルに「直近のユーザー発言」だけを返すように安全側に倒します
-    if not user_texts: return None, last_user_idx
+# ★ セッション初期化関数の変更
+def get_session(sid: str) -> Dict:
+    if sid not in SESSIONS:
+        SESSIONS[sid] = {
+            "history": [],
+            "eval_count": 0,
+            "gmd_totals": [],
+            "gmd_details": [],
+            "scoring_buffer": "", # ★追加：未採点のテキストを溜める場所
+        }
+    return SESSIONS[sid]
+
+# def find_scoring_span_user_only(history: List[Dict], last_user_idx: int, threshold: int = 50):
+#     user_texts = [m for m in history if m.get("role") == "user"]
+#     # 実際の実装はindex管理が複雑になるため、簡易的に「直近の未採点発言」を取得するロジック推奨
+#     # 今回はシンプルに「直近のユーザー発言」だけを返すように安全側に倒します
+#     if not user_texts: return None, last_user_idx
     
-    latest_msg = user_texts[-1]["content"]
-    # 毎回採点する（閾値判定は一旦スキップして動作優先）
-    return latest_msg, len(user_texts)-1
+#     latest_msg = user_texts[-1]["content"]
+#     # 毎回採点する（閾値判定は一旦スキップして動作優先）
+#     return latest_msg, len(user_texts)-1
 
 # ==========================
 # Scoring Class
@@ -359,6 +371,34 @@ def ask():
         return jsonify({"sid": sid, "answer": "え、なんて？💦"})
 
     sess["history"].append({"role": "user", "content": user_msg})
+
+    # ★★★ 新しい採点ロジック ★★★
+    # 1. バッファに今回の発言を追記する
+    current_buffer = sess.get("scoring_buffer", "")
+    current_buffer += user_msg
+    sess["scoring_buffer"] = current_buffer # セッション更新
+    
+    # 2. バッファの長さが50文字を超えているかチェック
+    score_result = None
+    if len(current_buffer) >= 50:
+        # 50文字以上溜まったので、溜まったテキスト全てを採点に出す
+        scorer = Scoring(client, model="gpt-4o", window_chars=len(current_buffer))
+        result = scorer.score_from_context(current_buffer) # 全文渡す
+        
+        # セッションデータ更新
+        sess["gmd_totals"].append(result["total"])
+        sess["gmd_details"].append(result["details_display"]) # 履歴保存
+        sess["eval_count"] += 1
+        
+        # 採点終わったのでバッファを空にする
+        sess["scoring_buffer"] = ""
+        
+        # フロントエンドへの返却用データ
+        score_result = {
+            "total": result["total"],
+            "details": result["details_display"],
+            "eval_index": sess["eval_count"] - 1,
+        }
 
     # AI返答生成
     responder = Response(client, model="gpt-4.1-mini", system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
