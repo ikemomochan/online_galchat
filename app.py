@@ -426,21 +426,6 @@ def ask():
         "remaining_seconds": remaining_val  # ★重要: ここで時間を返さないとフロントのタイマーが動かない
     }
 
-    # 採点ロジック
-    ctx, new_last_u = find_scoring_span_user_only(sess["history"], sess.get("last_scored_user_idx", -1))
-    if ctx:
-        scorer = Scoring(client, model="gpt-4.1-mini", window_chars=50)
-        result = scorer.score_from_context(ctx)
-        sess["last_scored_user_idx"] = new_last_u
-        sess["gmd_totals"].append(result["total"])
-        sess["eval_count"] += 1
-        
-        resp_payload["gmd"] = {
-            "total": result["total"],
-            "details": result["details_display"],
-            "eval_index": sess["eval_count"] - 1,
-        }
-
     response = jsonify(resp_payload)
     response.set_cookie("sid", sid, max_age=60*60*24*30, httponly=True, samesite="Lax")
     return response, 200
