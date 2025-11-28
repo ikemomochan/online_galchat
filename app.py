@@ -9,11 +9,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── 定数設定 ──
+# ── 設定関連 ──
 CHAT_MODE = "chat"          
 LISTENING_MODE = False      
 MIN_TOKENS = 50             
 REPLY_TOKENS = 150          
+
+# ★ モデル名をここで一括指定（存在するものに合わせて書き換えてOKです）
+AI_MODEL_NAME = "gpt-4.1-mini" 
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", "default_secret_key") 
@@ -22,7 +25,7 @@ CORS(app, resources={r"/ask": {"origins": "*"}})
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# 開発者用パスワード（この名前で入ると時間無制限）
+# 開発者用パスワード
 DEV_PASSWORD = "admin"
 
 # 制限時間（秒）: 5分 = 300秒
@@ -33,25 +36,21 @@ BANNED_USERS = set()
 
 # セッション管理
 SESSIONS: Dict[str, Dict] = {}
-gyarumind_scores: dict[str, list[float]] = {}
-conversations: dict[str, str] = {}
 
 # ── ヘルパー関数 ──
 
 def get_session(sid: str) -> Dict:
-    """セッションごとのデータを初期化・取得"""
     if sid not in SESSIONS:
         SESSIONS[sid] = {
             "history": [],
             "eval_count": 0,
             "gmd_totals": [],
             "gmd_details": [],
-            "last_scored_user_idx": -1,
+            "scoring_buffer": "", 
         }
     return SESSIONS[sid]
 
 def is_banned():
-    """ユーザーが利用禁止状態かチェック"""
     if session.get('is_dev'):
         return False
     user_ip = request.remote_addr
@@ -74,7 +73,7 @@ CONST = {
     "sigma_xs": [0.62, 0.58, 0.65, 0.59, 0.69, 0.67, 0.89, 0.80],
 }
 
-DISPLAY2MODEL = {k: k for k in FEATURE_KEYS} # 同じ名前を使用
+DISPLAY2MODEL = {k: k for k in FEATURE_KEYS}
 
 SYSTEM_PROMPT = (
     """
@@ -132,22 +131,16 @@ FEW_SHOTS = {
 def build_system_prompt(profile: Optional[Dict], mode: str) -> str:
     base = LISTENING_SYSTEM_PROMPT if mode in {"listen", "listening", "listener"} else SYSTEM_PROMPT
     if profile:
-        return base.format(
-            nickname=profile.get('nickname','きみ'),
-            hobby=profile.get('hobby',''),
-            job=profile.get('job',''),
-            personality=profile.get('personality','')
-        )
-    return base.format(nickname='きみ', hobby='', job='', personality='')
+        return base.format(nickname=profile.get('nickname','きみ'))
+    return base.format(nickname='きみ')
 
 def sample_shots(intent: str, k: int = 2, sid: Optional[str] = None) -> List[Dict]:
-    pool = FEW_SHOTS.get(intent, FEW_SHOTS.get("energy", [])) # fallback to energy if other
+    pool = FEW_SHOTS.get(intent, FEW_SHOTS.get("energy", []))
     pairs = [(pool[i], pool[i+1]) for i in range(0, len(pool), 2) if i+1 < len(pool)]
     if not pairs: return []
     
     seed = int(hashlib.md5((sid or "anon").encode()).hexdigest(), 16) & 0xffffffff
     rnd = random.Random(seed)
-    # rnd.shuffle(pairs) # シャッフルはお好みで
     picked = pairs[:max(0, min(k, len(pairs)))]
     return [m for p in picked for m in p]
 
@@ -172,37 +165,15 @@ def _clip_0_50(v: float) -> float:
 def _bubble_split(text: str, max_bubbles: int = 3) -> List[str]:
     if not text: return [""]
     s = re.sub(r"\s+", " ", text).strip()
-    chunks = re.findall(r".+?(?:[。．！？!?]+|$)", s) # 簡易分割
+    chunks = re.findall(r".+?(?:[。．！？!?]+|$)", s)
     if not chunks: chunks = [s]
     return chunks[:max_bubbles]
-
-# ★ セッション初期化関数の変更
-def get_session(sid: str) -> Dict:
-    if sid not in SESSIONS:
-        SESSIONS[sid] = {
-            "history": [],
-            "eval_count": 0,
-            "gmd_totals": [],
-            "gmd_details": [],
-            "scoring_buffer": "", # ★追加：未採点のテキストを溜める場所
-        }
-    return SESSIONS[sid]
-
-# def find_scoring_span_user_only(history: List[Dict], last_user_idx: int, threshold: int = 50):
-#     user_texts = [m for m in history if m.get("role") == "user"]
-#     # 実際の実装はindex管理が複雑になるため、簡易的に「直近の未採点発言」を取得するロジック推奨
-#     # 今回はシンプルに「直近のユーザー発言」だけを返すように安全側に倒します
-#     if not user_texts: return None, last_user_idx
-    
-#     latest_msg = user_texts[-1]["content"]
-#     # 毎回採点する（閾値判定は一旦スキップして動作優先）
-#     return latest_msg, len(user_texts)-1
 
 # ==========================
 # Scoring Class
 # ==========================
 class Scoring:
-    def __init__(self, client: OpenAI, model: str = "gpt-4.1-mini-mini", window_chars: int = 50):
+    def __init__(self, client: OpenAI, model: str, window_chars: int = 50):
         self.client = client
         self.model = model
         self.window_chars = window_chars
@@ -247,7 +218,7 @@ class Scoring:
         }
 
 # ==========================
-# Response Class (Fixed for Standard OpenAI)
+# Response Class
 # ==========================
 class Response:
     def __init__(self, client: OpenAI, model: str, system_prompt: str, profile: Optional[Dict], mode: str):
@@ -274,22 +245,18 @@ class Response:
         return _clip_0_50((current_total or 30.0) + 5.0)
 
     def generate_reply(self, user_response: str, intent: str, target_score: float, max_bubbles: int, profile: Optional[Dict], mode: str, sid: str) -> List[str]:
-        # Few-Shotサンプルの取得
         shots = sample_shots(intent, k=2, sid=sid)
         
-        # 指示プロンプト作成
         style_instruction = (
             f"Intent: {intent}\nTarget Score: {target_score}\n"
             "要件: 回答は40文字以内。一般倫理的に違反することや犯罪を助長することは絶対に書かないでください。また、性的な内容も避けてください。"
         )
         
-        # メッセージ構築（System + FewShots + UserInstruction + UserInput）
         messages = [{"role": "system", "content": self.system_prompt}]
         messages.extend(shots)
         messages.append({"role": "user", "content": f"{style_instruction}\n\nUser: {user_response}"})
 
         try:
-            # ★ ここを修正: client.responses ではなく client.chat.completions を使用
             res = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -344,7 +311,7 @@ def ask():
     if is_banned():
         return jsonify({"error": "Time limit exceeded", "answer": "もう終了時間だよ～！またね👋", "force_stop": True}), 403
 
-    # 2. 時間経過チェック & 残り時間計算
+    # 2. 時間経過チェック
     remaining_val = 0
     if not session.get('is_dev'):
         start_time = session.get('start_time')
@@ -359,7 +326,7 @@ def ask():
             session['start_time'] = time.time()
             remaining_val = TIME_LIMIT_SECONDS
     else:
-        remaining_val = 99999 # デバッグ用無限時間
+        remaining_val = 99999
 
     payload = request.json or {}
     sid = request.cookies.get("sid") or payload.get("sid") or str(uuid.uuid4())
@@ -373,27 +340,27 @@ def ask():
     sess["history"].append({"role": "user", "content": user_msg})
 
     # ★★★ 新しい採点ロジック ★★★
-    # 1. バッファに今回の発言を追記する
+    # 1. バッファに今回の発言を追記
     current_buffer = sess.get("scoring_buffer", "")
     current_buffer += user_msg
-    sess["scoring_buffer"] = current_buffer # セッション更新
+    sess["scoring_buffer"] = current_buffer
     
     # 2. バッファの長さが50文字を超えているかチェック
     score_result = None
     if len(current_buffer) >= 50:
-        # 50文字以上溜まったので、溜まったテキスト全てを採点に出す
-        scorer = Scoring(client, model="gpt-4o", window_chars=len(current_buffer))
-        result = scorer.score_from_context(current_buffer) # 全文渡す
+        # 採点
+        scorer = Scoring(client, model=AI_MODEL_NAME, window_chars=len(current_buffer))
+        result = scorer.score_from_context(current_buffer)
         
         # セッションデータ更新
         sess["gmd_totals"].append(result["total"])
-        sess["gmd_details"].append(result["details_display"]) # 履歴保存
+        sess["gmd_details"].append(result["details_display"])
         sess["eval_count"] += 1
         
-        # 採点終わったのでバッファを空にする
+        # バッファを空にする
         sess["scoring_buffer"] = ""
         
-        # フロントエンドへの返却用データ
+        # フロントエンドへの返却用データ作成
         score_result = {
             "total": result["total"],
             "details": result["details_display"],
@@ -401,7 +368,7 @@ def ask():
         }
 
     # AI返答生成
-    responder = Response(client, model="gpt-4.1-mini", system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
+    responder = Response(client, model=AI_MODEL_NAME, system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
     intent = responder.classify_intent(user_msg)
     target = responder.plan_target(sess["gmd_totals"][-1] if sess.get("gmd_totals") else None)
     
@@ -423,8 +390,13 @@ def ask():
         "sid": sid, 
         "answer": bubbles, 
         "intent": intent, 
-        "remaining_seconds": remaining_val  # ★重要: ここで時間を返さないとフロントのタイマーが動かない
+        "remaining_seconds": remaining_val
     }
+
+    # ★★★ ここが抜けていました！ ★★★
+    # 計算したスコア結果があるなら、返却データに追加する
+    if score_result:
+        resp_payload["gmd"] = score_result
 
     response = jsonify(resp_payload)
     response.set_cookie("sid", sid, max_age=60*60*24*30, httponly=True, samesite="Lax")
