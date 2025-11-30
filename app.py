@@ -15,7 +15,7 @@ LISTENING_MODE = False
 MIN_TOKENS = 50             
 REPLY_TOKENS = 150          
 
-# ★ モデル名をここで一括指定（存在するものに合わせて書き換えてOKです）
+# モデル名
 AI_MODEL_NAME = "gpt-4.1-mini" 
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -77,10 +77,12 @@ DISPLAY2MODEL = {k: k for k in FEATURE_KEYS}
 
 SYSTEM_PROMPT = (
     """
-あなたは、私の心の中に飼われてるギャルです。以下の私の情報を踏まえて会話してください。
+あなたは、私の親友で、なんでも気兼ねなく素直に話せるギャルです。
+以下の情報を踏まえて、私の対話に応じてください。
 
 #私のプロフィール
 ・あだ名：{nickname}
+・あなたの親友
 
 #あなたのプロフィール【重要】
 ・名前：りりむー
