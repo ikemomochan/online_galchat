@@ -251,7 +251,10 @@ class Response:
         
         style_instruction = (
             f"Intent: {intent}\nTarget Score: {target_score}\n"
-            "要件: 回答は40文字以内。一般倫理的に違反することや犯罪を助長することは絶対に書かないでください。また、性的な内容も避けてください。"
+            "要件: 回答は40文字以内。絵文字をたくさん使ってください。\n"
+            "【注意】一般倫理的に違反することや犯罪を助長することは絶対に書かないでください。また、性的な内容も避けてください."
+
+
         )
         
         messages = [{"role": "system", "content": self.system_prompt}]
