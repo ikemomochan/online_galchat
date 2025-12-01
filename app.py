@@ -19,7 +19,7 @@ REPLY_TOKENS = 150
 AI_MODEL_NAME = "gpt-4.1-mini" 
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-app.secret_key = os.getenv("SECRET_KEY", "default_secret_key") 
+app.secret_key = "reset_2025_11_29_v2" 
 app.permanent_session_lifetime = timedelta(days=365) 
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
