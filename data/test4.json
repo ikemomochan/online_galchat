@@ -1,0 +1,18 @@
+{
+  "uid": "test4",
+  "nickname": "いけもも",
+  "history": [
+    {
+      "role": "user",
+      "content": "ねむいよー"
+    },
+    {
+      "role": "assistant",
+      "content": "いけもも、マジで寝落ち寸前じゃん🤣💤無理せず爆睡して、明日エグいパワーで復活しよーぜ🔥✨"
+    }
+  ],
+  "memories": [],
+  "scores": [],
+  "last_finished_at": 0,
+  "current_day_log": "User: ねむいよー\nGal: いけもも、マジで寝落ち寸前じゃん🤣💤無理せず爆睡して、明日エグいパワーで復活しよーぜ🔥✨\n"
+}
