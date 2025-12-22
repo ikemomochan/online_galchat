@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>また明日！</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; text-align: center; color: #555; }
+        h1 { font-size: 1.5rem; color: #ff69b4; margin-bottom: 20px; }
+        .timer { font-size: 2rem; font-weight: bold; color: #333; margin: 20px 0; }
+        p { line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>今日の会話は終了です✨</h1>
+        <p>ご協力ありがとうございました！<br>次回もよろしくです！</p>
+        
+        <p>次の会話ができるまで</p>
+        <div class="timer">{{ hours }}時間 {{ mins }}分</div>
+    </div>
+</body>
+</html>

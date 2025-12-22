@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>実験モニタリング</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        h1 { color: #333; }
+        .user-card {
+            background: white; border-radius: 10px; padding: 20px;
+            margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .user-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #ff69b4; padding-bottom: 10px; margin-bottom: 10px;
+        }
+        .user-uid { font-size: 0.8rem; color: #666; }
+        .download-btn {
+            background: #333; color: white; text-decoration: none;
+            padding: 5px 15px; border-radius: 5px; font-size: 0.9rem;
+        }
+        
+        /* 会話ログエリア */
+        .log-area {
+            background: #fafafa; border: 1px solid #ddd; padding: 10px;
+            height: 300px; overflow-y: scroll; border-radius: 5px;
+            font-size: 0.9rem; margin-bottom: 15px;
+        }
+        .log-item { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dotted #ccc; }
+        .role-user { color: #0000ff; font-weight: bold; }
+        .role-gal { color: #ff0080; font-weight: bold; }
+        .timestamp { color: #999; font-size: 0.7rem; float: right; }
+
+        /* スコア履歴テーブル */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+    <h1>🕵️‍♀️ 実験モニタリング画面</h1>
+    <p>パスワード認証済み管理者のみ表示中</p>
+
+    {% for user in users %}
+    <div class="user-card">
+        <div class="user-header">
+            <div>
+                <strong>名前: {{ user.nickname }}</strong> 
+                <span class="user-uid">(ID: {{ user.uid }})</span><br>
+                <small>最終更新: {{ user.last_updated }}</small>
+            </div>
+            <a href="/download/{{ user.uid }}?pass=admin" class="download-btn">💾 JSONバックアップ</a>
+        </div>
+
+        <h3>📝 今日の会話ログ (Current Buffer)</h3>
+        <div class="log-area" style="height: 150px; background: #fff0f5;">
+            <pre>{{ user.current_day_log if user.current_day_log else "（まだ会話なし）" }}</pre>
+        </div>
+
+        <h3>💬 全会話履歴 (History)</h3>
+        <div class="log-area">
+            {% for chat in user.history | reverse %}
+                <div class="log-item">
+                    <span class="{{ 'role-user' if chat.role == 'user' else 'role-gal' }}">
+                        {{ 'ユーザー' if chat.role == 'user' else 'りりむー' }}:
+                    </span>
+                    {{ chat.content }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <h3>📊 採点履歴</h3>
+        {% if user.scores %}
+        <table>
+            <thead>
+                <tr>
+                    <th>日付</th>
+                    <th>合計点</th>
+                    <th>一番低かった項目</th>
+                    <th>アドバイス</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for score in user.scores | reverse %}
+                <tr>
+                    <td>{{ score.date }}</td>
+                    <td>{{ score.total }}</td>
+                    <td>{{ score.lowest_item }}</td>
+                    <td>{{ score.advice }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>まだ採点データはありません。</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p>まだ参加者がいません。</p>
+    {% endfor %}
+
+</body>
+</html>

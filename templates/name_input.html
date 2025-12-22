@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>実験に参加する</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; }
+        .card { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 90%; max-width: 400px; }
+        input { padding: 15px; border-radius: 10px; border: 1px solid #ddd; width: 80%; margin: 20px 0; font-size: 1rem;}
+        button { background: #ff69b4; color: white; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>実験への参加<br>ありがとうございます✨</h2>
+        <p>ギャルAIとお話しするときに呼んでほしい<br>「あだ名」を教えてね！</p>
+        
+        <form action="/register" method="POST">
+            <input type="hidden" name="uid" value="{{ uid }}">
+            
+            <input type="text" name="nickname" placeholder="あだ名を入力（例：たろう）" required>
+            <br>
+            <button type="submit">はじめる！</button>
+        </form>
+    </div>
+</body>
+</html>

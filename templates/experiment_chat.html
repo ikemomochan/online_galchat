@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Gal Experiment</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* 実験用追加CSS */
+        #timer-bar {
+            background: #333; color: white; padding: 10px; text-align: center;
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 100; font-weight: bold;
+        }
+        #finish-btn {
+            background: #ccc; pointer-events: none; border: none; 
+            padding: 5px 15px; border-radius: 20px; color: white; margin-left: 10px;
+        }
+        #finish-btn.active {
+            background: #ff0080; pointer-events: auto; cursor: pointer;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        /* チャットエリア調整（タイマーバーの分下げる） */
+        #chat-container {
+            margin-top: 60px; padding: 20px; padding-bottom: 100px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+
+        /* 結果モーダル */
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:999; }
+        .hidden { display: none; }
+        .modal-content { background:white; padding:20px; border-radius:15px; width:90%; max-width:400px; text-align:center; max-height:90vh; overflow-y:auto; }
+    </style>
+</head>
+<body>
+    <div id="timer-bar">
+        残り: <span id="time-display">10:00</span>
+        <button id="finish-btn" onclick="finishExperiment()">まだ押せません</button>
+    </div>
+
+    <div id="chat-container"></div>
+    
+    <div class="input-container">
+        <div class="input-box">
+            <input type="text" id="msg-input" placeholder="メッセージを入力...">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <div id="result-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>今日の採点結果💖</h2>
+            <h1 id="result-score" style="color:#ff69b4; font-size:3rem; margin:10px 0;">--</h1>
+            
+            <canvas id="daily-chart"></canvas>
+            
+            <div id="result-advice" style="background:#fff0f5; padding:15px; margin:20px 0; border-radius:10px; text-align:left; line-height:1.5;"></div>
+            
+            <button onclick="window.location.reload()" style="background:#333; color:white; padding:12px 30px; border:none; border-radius:30px; font-weight:bold; cursor:pointer;">また明日！</button>
+        </div>
+    </div>
+
+    <script>
+        // サーバーから渡された変数をJSで受け取る
+        const UID = "{{ uid }}";
+        const SCORES = JSON.parse('{{ scores | safe }}'); // 過去のスコア履歴
+        
+        let timeLeft = 600; // 10分 = 600秒
+        let canFinish = false;
+
+        // === 1. タイマー処理 ===
+        const timer = setInterval(() => {
+            timeLeft--;
+            const m = Math.floor(timeLeft / 60);
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('time-display').innerText = `${m}:${s}`;
+
+            // 5分経過(残り300秒以下)で終了ボタン有効化
+            if (timeLeft <= 300 && !canFinish) {
+                canFinish = true;
+                const btn = document.getElementById('finish-btn');
+                btn.classList.add('active');
+                btn.innerText = "採点して終了！";
+            }
+            // 0秒で強制終了
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                finishExperiment();
+            }
+        }, 1000);
+
+        // === 2. メッセージ送信処理 ===
+        async function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value;
+            if(!text) return;
+            
+            // 自分の発言を表示
+            addBubble(text, 'user');
+            input.value = '';
+            
+            // ローディング表示（……🤔）
+            const loading = addBubble("……🤔", 'gal');
+
+            try {
+                // APIへ送信
+                const res = await fetch('/api/message', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({uid: UID, message: text})
+                });
+                const data = await res.json();
+                
+                // ローディングを消して返信を表示
+                loading.remove();
+                addBubble(data.reply, 'gal');
+            } catch (e) {
+                loading.innerText = "エラーだ💦";
+            }
+        }
+
+        // 吹き出しを追加する関数
+        function addBubble(text, role) {
+            const div = document.createElement('div');
+            div.className = `bubble ${role}`;
+            div.innerHTML = text.replace(/\n/g, '<br>');
+            const container = document.getElementById('chat-container');
+            container.appendChild(div);
+            // 一番下へスクロール
+            window.scrollTo(0, document.body.scrollHeight);
+            return div;
+        }
+
+        // === 3. 終了＆採点処理 ===
+        async function finishExperiment() {
+            clearInterval(timer);
+            const btn = document.getElementById('finish-btn');
+            btn.innerText = "集計中...";
+            btn.disabled = true;
+            
+            try {
+                // 採点APIを叩く
+                const res = await fetch('/api/finish', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({uid: UID})
+                });
+                const data = await res.json();
+                
+                // 結果を表示
+                showResult(data.score);
+            } catch (e) {
+                alert("集計エラーが発生しました。通信環境を確認してください。");
+                btn.innerText = "エラー";
+            }
+        }
+
+        // 結果モーダル表示
+        function showResult(scoreData) {
+            document.getElementById('result-modal').classList.remove('hidden');
+            
+            // 点数表示
+            document.getElementById('result-score').innerText = `${scoreData.total}点`;
+            
+            // アドバイス表示
+            document.getElementById('result-advice').innerHTML = `
+                <strong style="color:#ff0080">【アドバイス (${scoreData.lowest_item})】</strong><br>
+                ${scoreData.advice}
+            `;
+            
+            // グラフ描画（Chart.js）
+            // 今回の結果を履歴に追加して描画
+            const allScores = [...SCORES, scoreData];
+            new Chart(document.getElementById('daily-chart'), {
+                type: 'line',
+                data: {
+                    labels: allScores.map(d => d.date), // 日付ラベル
+                    datasets: [{
+                        label: 'ギャルマインド度',
+                        data: allScores.map(d => d.total),
+                        borderColor: '#ff69b4',
+                        backgroundColor: 'rgba(255, 105, 180, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    scales: { y: { min: 0, max: 50 } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
