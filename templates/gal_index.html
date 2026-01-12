@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Chat with Ririmu</title>
+  <title>Chat with Lilymoo</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
   <script defer src="{{ url_for('static', filename='script.js') }}"></script>
@@ -17,40 +17,40 @@
         <img id="header-gal-img" src="/static/gyaru_default.png" alt="">
       </div>
       <div class="gal-info">
-        <span class="gal-name">りりむー</span>
-        <span id="timer-display" style="font-size:0.8rem; color:#d81b60; margin-left:8px;">残り 05:00</span>
+        <span class="gal-name">Lilymoo</span>
+        <!-- <span id="timer-display" style="font-size:0.8rem; color:#d81b60; margin-left:8px;">残り 05:00</span> -->
       </div>
     </div>
     <button id="score-btn" class="score-badge">
-      <span>GalMind</span>
+      <span>GYARU-MIDX</span>
       <span id="header-score" class="score-value">--</span>
     </button>
   </header>
 
   <main id="chat-area" class="chat-container">
     <div class="bubble gal">
-        やほー！💖<br>今日もアゲてこーね！
+        Yo!💖<br>We’re boosting the mood today!
     </div>
   </main>
 
   <footer class="input-container">
     <form id="chat-form" class="input-box">
       <input id="message" type="text" autocomplete="off" placeholder="メッセージ..." />
-      <button type="submit">送信</button>
+      <button type="submit">Send</button>
     </form>
   </footer>
 
   <div id="stats-modal" class="modal-overlay hidden">
     <div class="modal-content">
       <button id="close-modal" class="close-btn">×</button>
-      <h2 style="text-align:center; color:#d81b60;">ギャルマインド分析📈</h2>
+      <h2 style="text-align:center; color:#d81b60;">GYARU-MIDX Analysis📈</h2>
       
       <div class="chart-wrapper">
         <canvas id="gm-chart"></canvas>
       </div>
 
       <div class="details-wrapper">
-        <h3 style="color:#d81b60;">内訳チェック📋</h3>
+        <h3 style="color:#d81b60;">Breakdown📋</h3>
         <div class="nav-row" style="text-align:center; margin-bottom:5px;">
             <button id="prev-detail">◀</button>
             <span id="detail-index">#--</span>

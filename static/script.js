@@ -18,13 +18,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // タイマー関連
   const timerDisplay = document.getElementById("timer-display");
-  let remainingSeconds = 300; 
+  let remainingSeconds = null; 
   let isDevMode = false;
 
   // 履歴データ
   let scoreHistory = [];
   let detailHistory = [];
   let currentDetailIndex = 0;
+  const detailLabelMap = {
+    "自己肯定感": "Self-Esteem",
+    "自己受容": "Self-Acceptance",
+    "楽観性": "Optimism",
+    "自他境界": "Self-Other Boundary",
+    "本来性": "Authenticity",
+    "他者尊重": "Other-Respect",
+    "感情の強度": "Emotional Intensity",
+    "言語創造性": "Linguistic Creativity",
+  };
 
 
   // === イベントリスナー設定 ===
@@ -81,6 +91,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // タイマー表示更新
   function updateTimerDisplay() {
       if (!timerDisplay) return;
+      if (remainingSeconds === null) {
+          timerDisplay.textContent = "Unlimited";
+          timerDisplay.style.color = "";
+          isDevMode = false;
+          return;
+      }
+
       
       if (remainingSeconds > 90000) {
           timerDisplay.textContent = "∞ (Dev Mode)";
@@ -157,7 +174,8 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const [key, value] of Object.entries(detail)) {
         if (key === "total") continue; 
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+        const label = detailLabelMap[key] || key;
+        row.innerHTML = `<td>${label}</td><td>${value}</td>`;
         table.appendChild(row);
     }
   }
@@ -165,7 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === タイマー開始 ===
   const timerInterval = setInterval(() => {
-      if (remainingSeconds > 0 && remainingSeconds < 90000) {
+      if (remainingSeconds !== null && remainingSeconds > 0 && remainingSeconds < 90000) {
           remainingSeconds--;
       }
       updateTimerDisplay();
@@ -198,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
       loadingDiv.remove();
 
       if (data.remaining_seconds !== undefined) {
-          remainingSeconds = Math.floor(data.remaining_seconds);
+          remainingSeconds = data.remaining_seconds === null ? null : Math.floor(data.remaining_seconds);
           updateTimerDisplay();
       }
 

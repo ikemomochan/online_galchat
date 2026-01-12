@@ -29,7 +29,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 DEV_PASSWORD = "admin"
 
 # 制限時間（秒）: 5分 = 300秒
-TIME_LIMIT_SECONDS = 300
+TIME_LIMIT_SECONDS = None
 
 # BANリスト
 BANNED_USERS = set()
@@ -315,23 +315,8 @@ def ask():
     # 1. BANチェック
     if is_banned():
         return jsonify({"error": "Time limit exceeded", "answer": "もう終了時間だよ～！またね👋", "force_stop": True}), 403
-
-    # 2. 時間経過チェック
-    remaining_val = 0
-    if not session.get('is_dev'):
-        start_time = session.get('start_time')
-        if start_time:
-            elapsed = time.time() - start_time
-            remaining_val = max(0, TIME_LIMIT_SECONDS - elapsed)
-            if remaining_val <= 0:
-                BANNED_USERS.add(request.remote_addr)
-                session['is_finished'] = True
-                return jsonify({"error": "Time limit", "answer": "あっ、5分経っちゃった！ここでおしまい！ありがとー！💖", "force_stop": True}), 200
-        else:
-            session['start_time'] = time.time()
-            remaining_val = TIME_LIMIT_SECONDS
-    else:
-        remaining_val = 99999
+    # 2. No time limit
+    remaining_val = None
 
     payload = request.json or {}
     sid = request.cookies.get("sid") or payload.get("sid") or str(uuid.uuid4())
