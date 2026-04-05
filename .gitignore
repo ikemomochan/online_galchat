@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 venv/
 .clean_venv
+.chi_demo_env
+Procfile
