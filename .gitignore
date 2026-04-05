@@ -5,3 +5,4 @@ venv/
 .clean_venv
 .chi_demo_env
 Procfile
+claude_venv

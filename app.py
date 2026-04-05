@@ -1,13 +1,89 @@
-import os, re, uuid, time, hashlib, random
+import json, os, re, uuid, time, hashlib, random, urllib.request
 from datetime import timedelta
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 import numpy as np
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from flask_cors import CORS
-from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ── Claudeクライアント ──
+class ClaudeClient:
+    def __init__(self, api_key: str, model: str):
+        self.api_key = api_key
+        self.model = model
+        self.endpoint = "https://api.anthropic.com/v1/messages"
+        if not self.api_key:
+            raise ValueError("CLAUDE_API_KEY environment variable is not set")
+
+    def complete(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        # Convert prompt to messages format
+        messages = [{"role": "user", "content": prompt}]
+        
+        payload = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": messages,
+        }
+        data = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            self.endpoint,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
+        )
+
+        with urllib.request.urlopen(request, timeout=30) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        return result.get("content", [{}])[0].get("text", "").strip()
+
+    def complete_with_messages(self, messages: List[Dict], system_prompt: str = "", temperature: float = 0.7, max_tokens: int = 150) -> str:
+        payload = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": messages,
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+        
+        data = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            self.endpoint,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            return result.get("content", [{}])[0].get("text", "").strip()
+        except urllib.request.HTTPError as e:
+            error_body = e.read().decode("utf-8")
+            try:
+                error_json = json.loads(error_body)
+                error_msg = error_json.get("error", {}).get("message", str(e))
+            except:
+                error_msg = f"HTTP {e.code}: {error_body}"
+            raise Exception(f"Claude API Error: {error_msg}")
+        except Exception as e:
+            raise Exception(f"Request failed: {str(e)}")
+
+    def prompt_from_messages(self, messages: List[Dict]) -> str:
+        # For messages API, we don't need to convert to prompt format
+        # Instead, we'll use the messages directly in the API call
+        return ""  # Not used in this implementation
 
 # ── 設定関連 ──
 CHAT_MODE = "chat"          
@@ -16,14 +92,14 @@ MIN_TOKENS = 50
 REPLY_TOKENS = 150          
 
 # モデル名
-AI_MODEL_NAME = "gpt-5.4" 
+AI_MODEL_NAME = "claude-sonnet-4-6"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = "reset_2025_11_29_v2" 
 app.permanent_session_lifetime = timedelta(days=365) 
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = ClaudeClient(api_key=os.getenv("CLAUDE_API_KEY", ""), model=AI_MODEL_NAME)
 
 # 開発者用パスワード
 DEV_PASSWORD = "admin"
@@ -191,7 +267,7 @@ class Scoring:
     - 8項目を項目別プロンプトで0〜5採点
     - PLS(標準化β)で合成 → 0〜50クリップ（UI想定）
     """
-    def __init__(self, client: OpenAI, model: str = "gpt-4.1-mini", window_chars: int = 50):
+    def __init__(self, client: Any, model: str = "claude-sonnet-4-6", window_chars: int = 50):
         self.client = client
         self.model = model
         self.window_chars = window_chars
@@ -343,14 +419,13 @@ class Scoring:
         display_scores: Dict[str, float] = {}
         for disp, hint in self.metric_prompts.items():
             prompt = self._build_metric_prompt(display_name=disp, hint=hint, context_text=context_text)
+            messages = [{"role": "user", "content": f"{prompt}\n\nHuman: {context_text}\nAssistant:"}]
             try:
-                res = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
+                raw = self.client.complete_with_messages(
+                    messages=messages,
                     temperature=0.6,
-                    max_completion_tokens=6,
+                    max_tokens=6,
                 )
-                raw = (res.choices[0].message.content or "").strip()
                 m = re.search(r"([0-5](?:\\.\\d+)?)", raw)
                 score = float(m.group(1)) if m else 0.0
             except Exception:
@@ -388,7 +463,7 @@ class Scoring:
 # ==========================
 
 class Response:
-    def __init__(self, client: OpenAI, model: str, system_prompt: str, profile: Optional[Dict], mode: str):
+    def __init__(self, client: Any, model: str, system_prompt: str, profile: Optional[Dict], mode: str):
         self.client = client
         self.model = model
         self.mode = mode
@@ -397,13 +472,14 @@ class Response:
     def classify_intent(self, user_response: str) -> str:
         if self.mode in {"listen", "listening"}: return "listen"
         system = "ユーザー入力が advice, sympathy, energy のどれに該当するか1語で出力せよ。"
+        messages = [{"role": "user", "content": f"{system}\n\nHuman: {user_response}\nAssistant:"}]
         try:
-            res = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role":"system","content":system},{"role":"user","content":user_response}],
-                temperature=0.0, max_completion_tokens=10,
+            raw = self.client.complete_with_messages(
+                messages=messages,
+                temperature=0.01,  # 0.0から0.01に変更
+                max_tokens=10,
             )
-            raw = (res.choices[0].message.content or "").strip().lower()
+            raw = raw.strip().lower()
             return next((label for label in INTENT_LABELS if label in raw), "energy")
         except:
             return "energy"
@@ -418,24 +494,21 @@ class Response:
             f"Intent: {intent}\nTarget Score: {target_score}\n"
             "要件: 回答は100文字以内。絵文字をたくさん使ってください。\n"
             "【注意】一般倫理的に違反することや犯罪を助長することは絶対に書かないでください。また、性的な内容も避けてください."
-
-
         )
         
         shots_text = format_shots(shots)
         enhanced_system = self.system_prompt + "\n\nこれらの対話例は、応答の際の口調の適応に参考にすること:\n" + shots_text
         
-        messages = [{"role": "system", "content": enhanced_system}]
-        messages.append({"role": "user", "content": f"{style_instruction}\n\nUser: {user_response}"})
+        messages = [{"role": "user", "content": f"{style_instruction}\n\n{user_response}"}]
 
         try:
-            res = self.client.chat.completions.create(
-                model=self.model,
+            text = self.client.complete_with_messages(
                 messages=messages,
+                system_prompt=enhanced_system,  # system promptを別途指定
                 temperature=0.7,
-                max_completion_tokens=REPLY_TOKENS,
+                max_tokens=REPLY_TOKENS,
             )
-            text = (res.choices[0].message.content or "").strip()
+            text = text.strip()
         except Exception as e:
             text = f"ごめん、今ちょいエラー出たかも💦 ({e})"
 

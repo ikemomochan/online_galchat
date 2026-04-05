@@ -4,7 +4,7 @@
 
 ## 🔥 システム概要
 
-- FlaskとOpenAI APIを使った日本語チャットシステム
+- FlaskとClaude API（sonnet-4.6）を使った日本語チャットシステム
 - ユーザーの入力に対してギャル口調の返答を生成
 - 会話ごとに心理的指標を評価し、ギャルマイン度（0〜50点）を算出
 - 8つの心理特徴に基づく内部評価を表示
@@ -12,7 +12,7 @@
 
 ## 💡 特徴
 
-- GPTモデルを使った自然な日本語応答
+- Claude sonnet-4.6モデルを使った自然な日本語応答
 - 口調や雰囲気を「ギャル風」に寄せたシステムプロンプト
 - 会話の流れを保持しつつ、スコアリング用の文脈を抽出
 - 5つの対話ごとにスコアを更新して推移を可視化
@@ -22,7 +22,6 @@
 - Python 3.10+ / 3.11+
 - Flask
 - Flask-CORS
-- openai
 - python-dotenv
 - numpy
 - gunicorn（Herokuや公開用デプロイ時）
@@ -32,7 +31,7 @@
 1. リポジトリをローカルにクローン
 2. Python仮想環境を作成し、有効化
 3. 依存パッケージをインストール
-4. OpenAI APIキーを環境変数に設定
+4. Claude APIキーを環境変数に設定
 
 ### 例: Windows PowerShell
 
@@ -42,12 +41,12 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### OpenAI APIキーの設定
+### Claude APIキーの設定
 
 プロジェクトルートに `.env` ファイルを作成し、次の内容を追加します。
 
 ```dotenv
-OPENAI_API_KEY=your_openai_api_key
+CLAUDE_API_KEY=your_claude_api_key
 ```
 
 または、直接環境変数として設定します。
@@ -81,9 +80,9 @@ gunicorn app:app
 
 ## ⚠️ 注意点
 
-- OpenAI APIキーが必要です
+- Claude APIキーが必要です
 - 無料枠を超えるリクエストでは課金が発生します
-- 現在のモデル設定は `gpt-5.4` です
+- 現在のモデル設定は `sonnet-4.6` です
 
 ## 📁 主要ファイル
 
