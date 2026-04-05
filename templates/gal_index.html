@@ -49,17 +49,36 @@
         <canvas id="gm-chart"></canvas>
       </div>
 
-      <div class="details-wrapper">
-        <h3 style="color:#d81b60;">Breakdown📋</h3>
-        <div class="nav-row" style="text-align:center; margin-bottom:5px;">
-            <button id="prev-detail">◀</button>
-            <span id="detail-index">#--</span>
-            <button id="next-detail">▶</button>
+      <div class="bottom-panel">
+        <div class="panel-tabs" style="text-align:center; margin-top:12px;">
+          <button id="tab-breakdown" class="panel-tab active">Breakdown</button>
+          <button id="tab-trend" class="panel-tab">Trend</button>
         </div>
-        <table id="gyarumind-detail-table"></table>
+
+        <div id="panel-breakdown">
+          <div class="details-wrapper">
+            <h3 style="color:#d81b60;">Breakdown📋</h3>
+            <div class="nav-row" style="text-align:center; margin-bottom:5px;">
+                <button id="prev-detail">◀</button>
+                <span id="detail-index">#--</span>
+                <button id="next-detail">▶</button>
+            </div>
+            <table id="gyarumind-detail-table"></table>
+          </div>
+        </div>
+
+        <div id="panel-trend" style="display:none;">
+          <div class="metrics-wrapper" style="margin-top:12px;">
+            <h3 style="color:#d81b60;">Metrics (click a tab)</h3>
+            <div id="metric-tabs" class="metric-tabs" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin:8px 0;"></div>
+            <div id="metric-view" style="text-align:center;">
+              <table id="metric-detail-table" style="margin:0 auto 8px auto;"></table>
+              <div id="metric-average" style="font-weight:700; color:#c2185b; margin-bottom:6px;"></div>
+            </div>
+          </div>
+          <div id="trend-message" class="trend-text" style="text-align:center; margin-top:10px; color:#c2185b;"></div>
+        </div>
       </div>
-      
-      <div id="trend-message" class="trend-text" style="text-align:center; margin-top:10px; color:#c2185b;"></div>
     </div>
   </div>
 

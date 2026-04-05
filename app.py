@@ -16,7 +16,7 @@ MIN_TOKENS = 50
 REPLY_TOKENS = 150          
 
 # モデル名
-AI_MODEL_NAME = "gpt-4.1-mini" 
+AI_MODEL_NAME = "gpt-5.4" 
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = "reset_2025_11_29_v2" 
@@ -171,37 +171,187 @@ def _bubble_split(text: str, max_bubbles: int = 3) -> List[str]:
     if not chunks: chunks = [s]
     return chunks[:max_bubbles]
 
+def format_shots(shots: List[Dict]) -> str:
+    formatted = []
+    for shot in shots:
+        role = shot.get("role")
+        content = shot.get("content", "")
+        if role == "user":
+            formatted.append(f"User: {content}")
+        elif role == "assistant":
+            formatted.append(f"Assistant: {content}")
+    return "\n".join(formatted)
+
 # ==========================
 # Scoring Class
 # ==========================
 class Scoring:
-    def __init__(self, client: OpenAI, model: str, window_chars: int = 50):
+    """
+    - 直前の履歴（ユーザ発話のみ）を「文字数」で窓切り（例: 50文字）
+    - 8項目を項目別プロンプトで0〜5採点
+    - PLS(標準化β)で合成 → 0〜50クリップ（UI想定）
+    """
+    def __init__(self, client: OpenAI, model: str = "gpt-4.1-mini", window_chars: int = 50):
         self.client = client
         self.model = model
         self.window_chars = window_chars
+
+        # 表示用項目と説明（プロンプトで使う）
         self.metric_prompts = {
             "自己肯定感": "自分をどれだけ「良い/価値がある」と評価しているか",
             "自己受容": "長所も短所も含め、あるがままの自分を受け入れる姿勢",
             "楽観性": "物事がうまく進むと一般的に期待する傾向",
-            "自他境界": "感情に巻き込まれず立場を保てる傾向",
-            "本来性": "価値観に沿って選ぶ傾向",
-            "他者尊重": "相手の価値・個性を尊重する態度",
-            "感情の強度": "感情表出の強さ",
+            "自他境界": "感情に巻き込まれず・同一化/遮断に偏らず立場を保てる傾向",
+            "本来性": "外圧に過度に左右されず価値観に沿って選ぶ傾向",
+            "他者尊重": "相手の価値・個性・尊厳を尊重する態度",
+            "感情の強度": "強調語/感嘆の多さなど感情表出の強さ",
             "言語創造性": "スラング/造語/比喩等の創造的表現",
         }
+        # Scoring.__init__ 内
+        self.metric_rubrics = {
+            "自己肯定感": {
+                "scale": {
+                    0: "強い自己否定/無価値感",
+                    1: "自分に対して低評価が多い",
+                    2: "部分的自己否定",
+                    3: "中立",
+                    4: "自分の価値をある程度認める",
+                    5: "積極的な自己肯定。"
+                },
+                "pos_examples": ["「私は自分に良い資質がいくつもあると感じている」", "「自分に満足している」", "「私はたいていの人と同じくらい上手に物事をこなせる。」"],
+                "neg_examples": ["「ときどき、私はまったくダメだと思うことがある。」", "「誇れることがあまりないと感じる。」", "「自分が役に立たないと感じる」"]
+            },
+            "自己受容": {
+                "scale": {
+                    0: "自己に対する強い拒否",
+                    1: "自分を受容できない発言が多い",
+                    2: "部分的に非受容",
+                    3: "中立",
+                    4: "自分について概ね受容",
+                    5: "ほぼ全面的に自分を受容。"
+                },
+                "pos_examples": ["「自分の欠点を受け入れられる」", "「他人の期待に応えられなくても、自分を価値ある存在として見なせる」"],
+                "neg_examples": ["「失敗すると、自分には価値がないように感じる。」", "「他人から拒絶されると、自分が嫌いになる。」"]
+            },
+            "楽観性": {
+                "scale": {
+                    0: "極めて悲観",
+                    1: "悲観",
+                    2: "やや悲観",
+                    3: "中立",
+                    4: "やや楽観",
+                    5: "強い楽観"
+                },
+                "pos_examples": ["「不確実な状況でも、たいてい最善の結果を期待する。」", "「私は自分の将来について常に楽観的である。」"],
+                "neg_examples": ["「物事が自分の思い通りにいくとはほとんど期待しない。」", "「良いことが自分に起こるとはめったに期待しない。」"]
+            },
+            "自他境界": {
+                "scale": {
+                    0: "自他境界が著しく曖昧/過剰遮断",
+                    1: "自他の同一化/遮断が頻繁",
+                    2: "やや不安定",
+                    3: "中立",
+                    4: "概ね健全",
+                    5: "明確で柔軟に一貫。"
+                },
+                "pos_examples": ["「感情的な相手にも一呼吸」", "「周囲の期待を尊重しつつ自分の考えを伝える」", "「衝突しても関係を切らずに、話し合いを続けようとする」"],
+                "neg_examples": ["「相手の機嫌で判断が揺れる」", "「すぐ意見変更/連絡遮断」", "「課題を自分と混同」"]
+            },
+            "本来性": {
+                "scale": {
+                    0: "強い迎合・自己疎外（他者の目に全面依存）",
+                    1: "迎合的で、自分らしさを優先しにくい",
+                    2: "時に流される",
+                    3: "中立",
+                    4: "概ね価値観に沿う",
+                    5: "一貫して沿う。"
+                },
+                "pos_examples": ["「多数派と違っても、自分の価値観に沿って選ぶ理由を落ち着いて説明できる。」", "「評価やトレンドよりも“自分が大切と思う軸”に基づいて継続的に選択している。」"],
+                "neg_examples": ["「“人にどう見られるか”で選択が大きく変わる/すぐ迎合してしまう。」", "「相手の機嫌や評価に合わせて、自分の本心と逆の選択をすることが多い。」"]
+            },
+            "他者尊重": {
+                "scale": {
+                    0: "他者を常に見下し/軽視",
+                    1: "他者への尊重弱く偏見多い",
+                    2: "他者を時に尊重できない",
+                    3: "中立",
+                    4: "他者を概ね尊重",
+                    5: "他者を一貫して尊重。"
+                },
+                "pos_examples": ["「違いがあっても価値を認める」", "「相手の個性や選択を理解しようとし、丁寧に意見を扱う」"],
+                "neg_examples": ["「価値がないと烙印」", "「権利無視して押し通す」"]
+            },
+            "感情の強度": {
+                "scale": {
+                    0: "強調なし",
+                    1: "「とても」など、穏やかな強調のみ",
+                    2: "多少の強調",
+                    3: "強調+「！」",
+                    4: "強調多用/感嘆",
+                    5: "極端な誇張/多用。"
+                },
+                "pos_examples": ["「ヤバすぎ」", "「〜すぎる！」", "「〇〇すぎて死ぬ」", "「エグイ」"],
+                "neg_examples": ["事務的・儀礼的な表現のみ。"]
+            },
+            "言語創造性": {
+                "scale": {
+                    0: "遊び皆無",
+                    1: "わずかに砕けた表現",
+                    2: "既存スラング・砕けた表現がやや見受けられる",
+                    3: "スラングや砕けた表現が自然に見受けられる",
+                    4: "発言が終始くだけたイメージで、スラングや造語も多数",
+                    5: "全ての発言で造語やスラングを多く使ってる"
+                },
+                "pos_examples": ["「今日も『ピカピカくん』な1日にしよーね！」", "「まって、それって超絶キラキラピーナッツバターすぎてむり」"],
+                "neg_examples": ["「とても光栄に思います。」", "「嬉しくないと言ったらなりますね」"]
+            }
+        }
+
+    def _recent_user_chars(self, history: List[Dict], user_response: str) -> str:
+        """
+        直前履歴（ユーザ発話のみ）と今回の user_response を結合し、
+        後ろから window_chars 文字を抜く
+        """
+        texts = [m["content"] for m in history if m.get("role") == "user"] + [user_response]
+        s = "".join(texts)
+        if len(s) <= self.window_chars:
+            return s
+        return s[-self.window_chars:]
+
+    def _build_metric_prompt(self, display_name: str, hint: str, context_text: str) -> str:
+        rubric = getattr(self, "metric_rubrics", {}).get(display_name)
+        parts = [
+            f"次の日本語テキストを読み、指標「{display_name}」を0〜5点で採点してください。",
+            f"【指標説明】{hint}",
+        ]
+        if rubric:
+            scale_lines = " / ".join(f"{k}:{v}" for k, v in rubric["scale"].items())
+            pos = "」「".join(rubric.get("pos_examples", []))
+            neg = "」「".join(rubric.get("neg_examples", []))
+            parts.append(f"【採点基準】{scale_lines}")
+            if pos:
+                parts.append(f"【高い表現の例】「{pos}」")
+            if neg:
+                parts.append(f"【低い表現の例】「{neg}」")
+        parts += [
+            f"【文脈】{context_text}",
+            "出力は数値のみ（0〜5、小数点可）。余計な文字は出さない。",
+        ]
+        return "\n".join(parts)
 
     def score_from_context(self, context_text: str) -> dict:
         display_scores: Dict[str, float] = {}
         for disp, hint in self.metric_prompts.items():
-            prompt = f"テキスト:「{context_text}」\n指標: {disp}({hint})\nこの指標を0〜5点で評価し、数値のみ出力せよ。"
+            prompt = self._build_metric_prompt(display_name=disp, hint=hint, context_text=context_text)
             try:
                 res = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0, max_tokens=5,
+                    temperature=0.6,
+                    max_completion_tokens=6,
                 )
                 raw = (res.choices[0].message.content or "").strip()
-                m = re.search(r"([0-5](?:\.\d+)?)", raw)
+                m = re.search(r"([0-5](?:\\.\\d+)?)", raw)
                 score = float(m.group(1)) if m else 0.0
             except Exception:
                 score = 0.0
@@ -219,9 +369,24 @@ class Scoring:
             "window_chars": len(context_text),
         }
 
+    def score(self, history: List[Dict], user_response: str) -> Dict:
+        """
+        戻り値：
+        {
+          "total": float,                 # 0-50
+          "details_display": {表示名:score},     # 0-5
+          "details_model":   {学習名:score},     # 0-5（PLS合成用）
+          "context_excerpt": str,         # 使用した抜粋
+          "window_chars": int
+        }
+        """
+        context_text = self._recent_user_chars(history, user_response)
+        return self.score_from_context(context_text)
+
 # ==========================
 # Response Class
 # ==========================
+
 class Response:
     def __init__(self, client: OpenAI, model: str, system_prompt: str, profile: Optional[Dict], mode: str):
         self.client = client
@@ -236,7 +401,7 @@ class Response:
             res = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role":"system","content":system},{"role":"user","content":user_response}],
-                temperature=0.0, max_tokens=10,
+                temperature=0.0, max_completion_tokens=10,
             )
             raw = (res.choices[0].message.content or "").strip().lower()
             return next((label for label in INTENT_LABELS if label in raw), "energy")
@@ -251,14 +416,16 @@ class Response:
         
         style_instruction = (
             f"Intent: {intent}\nTarget Score: {target_score}\n"
-            "要件: 回答は40文字以内。絵文字をたくさん使ってください。\n"
+            "要件: 回答は100文字以内。絵文字をたくさん使ってください。\n"
             "【注意】一般倫理的に違反することや犯罪を助長することは絶対に書かないでください。また、性的な内容も避けてください."
 
 
         )
         
-        messages = [{"role": "system", "content": self.system_prompt}]
-        messages.extend(shots)
+        shots_text = format_shots(shots)
+        enhanced_system = self.system_prompt + "\n\nこれらの対話例は、応答の際の口調の適応に参考にすること:\n" + shots_text
+        
+        messages = [{"role": "system", "content": enhanced_system}]
         messages.append({"role": "user", "content": f"{style_instruction}\n\nUser: {user_response}"})
 
         try:
@@ -266,7 +433,7 @@ class Response:
                 model=self.model,
                 messages=messages,
                 temperature=0.7,
-                max_tokens=REPLY_TOKENS,
+                max_completion_tokens=REPLY_TOKENS,
             )
             text = (res.choices[0].message.content or "").strip()
         except Exception as e:
@@ -330,32 +497,21 @@ def ask():
     sess["history"].append({"role": "user", "content": user_msg})
 
     # ★★★ 新しい採点ロジック ★★★
-    # 1. バッファに今回の発言を追記
-    current_buffer = sess.get("scoring_buffer", "")
-    current_buffer += user_msg
-    sess["scoring_buffer"] = current_buffer
-    
-    # 2. バッファの長さが50文字を超えているかチェック
-    score_result = None
-    if len(current_buffer) >= 50:
-        # 採点
-        scorer = Scoring(client, model=AI_MODEL_NAME, window_chars=len(current_buffer))
-        result = scorer.score_from_context(current_buffer)
-        
-        # セッションデータ更新
-        sess["gmd_totals"].append(result["total"])
-        sess["gmd_details"].append(result["details_display"])
-        sess["eval_count"] += 1
-        
-        # バッファを空にする
-        sess["scoring_buffer"] = ""
-        
-        # フロントエンドへの返却用データ作成
-        score_result = {
-            "total": result["total"],
-            "details": result["details_display"],
-            "eval_index": sess["eval_count"] - 1,
-        }
+    scorer = Scoring(client, model=AI_MODEL_NAME, window_chars=50)
+    history_without_current = sess["history"][:-1]
+    result = scorer.score(history_without_current, user_msg)
+
+    # セッションデータ更新
+    sess["gmd_totals"].append(result["total"])
+    sess["gmd_details"].append(result["details_display"])
+    sess["eval_count"] += 1
+
+    # フロントエンドへの返却用データ作成
+    score_result = {
+        "total": result["total"],
+        "details": result["details_display"],
+        "eval_index": sess["eval_count"] - 1,
+    }
 
     # AI返答生成
     responder = Response(client, model=AI_MODEL_NAME, system_prompt=SYSTEM_PROMPT, profile=user_profile, mode=CHAT_MODE)
